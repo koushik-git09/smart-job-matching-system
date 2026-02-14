@@ -17,7 +17,6 @@ import { Progress } from "@/app/components/ui/progress";
 import {
   TrendingUp,
   Target,
-  BookOpen,
   Briefcase,
   Upload,
   CheckCircle2,
@@ -29,24 +28,16 @@ import { SkillRadarChart } from "@/app/components/SkillRadarChart";
 import { JobMatchCard } from "@/app/components/JobMatchCard";
 import { CourseRecommendationCard } from "@/app/components/CourseRecommendationCard";
 import { CareerPathView } from "@/app/components/CareerPathView";
-import { LearningProgressTracker } from "@/app/components/LearningProgressTracker";
 import { ResumeUpload } from "@/app/components/ResumeUpload";
-import { mockSkillRadarData } from "@/app/data/mockData";
 import type { JobSeekerProfile } from "@/app/types";
 import type {
   CareerPath,
-  CourseProgress,
   CourseRecommendation,
   Skill,
   SkillMatch,
   SkillRadarData,
 } from "@/app/types";
-import {
-  getJobSeekerDashboard,
-  getLearningCourses,
-  saveLearningCourse,
-  uploadResume,
-} from "@/services/api";
+import { getJobSeekerDashboard, uploadResume } from "@/services/api";
 
 interface JobSeekerDashboardProps {
   profile: JobSeekerProfile;
@@ -63,15 +54,12 @@ export function JobSeekerDashboard({
     readinessScore: number;
     matchedJobs: number;
     skillsToImprove: number;
-    learningProgress: number;
     extractedSkills: string[];
     skillRadarData: SkillRadarData[];
     jobMatches: SkillMatch[];
     courseRecommendations: CourseRecommendation[];
     careerPath: CareerPath;
   } | null>(null);
-
-  const [learningCourses, setLearningCourses] = useState<CourseProgress[]>([]);
 
   const jobMatches = dashboard?.jobMatches ?? [];
   const courseRecommendations = dashboard?.courseRecommendations ?? [];
@@ -88,37 +76,6 @@ export function JobSeekerDashboard({
     }));
   }, [extractedSkills]);
 
-  const derivedLearningProgress: CourseProgress[] = useMemo(() => {
-    if (learningCourses.length > 0) return learningCourses;
-    return courseRecommendations.map((c) => ({
-      courseId: c.id,
-      courseTitle: c.title,
-      platform: c.platform,
-      status: "not-started",
-      progress: 0,
-      skillsImproved: c.skillsCovered,
-    }));
-  }, [courseRecommendations, learningCourses]);
-
-  const refreshLearning = async () => {
-    try {
-      const data = await getLearningCourses();
-      const courses = (data?.courses ?? []).map((c: any) => ({
-        courseId: c.courseId,
-        courseTitle: c.courseTitle,
-        platform: c.platform,
-        status: c.status,
-        progress: c.progress,
-        startedDate: c.startedDate,
-        completedDate: c.completedDate,
-        skillsImproved: c.skillsImproved ?? [],
-      }));
-      setLearningCourses(courses);
-    } catch {
-      setLearningCourses([]);
-    }
-  };
-
   const refreshDashboard = async () => {
     try {
       const data = await getJobSeekerDashboard();
@@ -130,53 +87,11 @@ export function JobSeekerDashboard({
 
   useEffect(() => {
     refreshDashboard();
-    refreshLearning();
   }, []);
 
   const handleResumeUpload = async (file: File) => {
     await uploadResume(file);
     await refreshDashboard();
-    await refreshLearning();
-  };
-
-  const handleEnroll = async (course: CourseRecommendation) => {
-    await saveLearningCourse(course.id, {
-      courseTitle: course.title,
-      platform: course.platform,
-      skillsImproved: course.skillsCovered,
-      status: "in-progress",
-      progress: 10,
-    });
-    await refreshDashboard();
-    await refreshLearning();
-  };
-
-  const handleAdvanceStatus = async (course: CourseProgress) => {
-    const nextStatus =
-      course.status === "not-started"
-        ? "in-progress"
-        : course.status === "in-progress"
-          ? "completed"
-          : "completed";
-
-    const nextProgress =
-      nextStatus === "completed"
-        ? 100
-        : nextStatus === "in-progress"
-          ? Math.max(10, course.progress)
-          : 0;
-
-    await saveLearningCourse(course.courseId, {
-      courseTitle: course.courseTitle,
-      platform: course.platform,
-      skillsImproved: course.skillsImproved,
-      status: nextStatus,
-      progress: nextProgress,
-      startedDate: course.startedDate ?? null,
-      completedDate: course.completedDate ?? null,
-    });
-    await refreshDashboard();
-    await refreshLearning();
   };
 
   // Calculate overall readiness score (average of top 3 job matches)
@@ -222,7 +137,7 @@ export function JobSeekerDashboard({
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -269,24 +184,6 @@ export function JobSeekerDashboard({
                 </div>
                 <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                   <Target className="w-6 h-6 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">
-                    Learning Progress
-                  </p>
-                  <p className="text-3xl font-bold text-purple-600">
-                    {dashboard?.learningProgress ?? 0}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
             </CardContent>
@@ -386,10 +283,11 @@ export function JobSeekerDashboard({
                     >
                       <h4 className="font-semibold mb-1">{gap.skillName}</h4>
                       <p className="text-sm text-gray-600 mb-2">
-                        Required: {gap.requiredLevel}
+                        Required: {gap.requiredLevel || "N/A"}
                       </p>
                       <p className="text-xs text-gray-500">
-                        ⏱ Est. learning time: {gap.estimatedLearningTime}
+                        ⏱ Est. learning time:{" "}
+                        {gap.estimatedLearningTime || "N/A"}
                       </p>
                     </div>
                   ))}
@@ -400,19 +298,6 @@ export function JobSeekerDashboard({
                 >
                   View Recommended Courses
                 </Button>
-              </CardContent>
-            </Card>
-
-            {/* Learning Progress */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Learning Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <LearningProgressTracker
-                  courses={derivedLearningProgress}
-                  onAdvanceStatus={handleAdvanceStatus}
-                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -439,7 +324,7 @@ export function JobSeekerDashboard({
                   <CardTitle>Your Skills Portfolio</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <SkillRadarChart data={mockSkillRadarData} />
+                  <SkillRadarChart data={dashboard?.skillRadarData ?? []} />
                 </CardContent>
               </Card>
 
@@ -543,11 +428,7 @@ export function JobSeekerDashboard({
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               {courseRecommendations.map((course) => (
-                <CourseRecommendationCard
-                  key={course.id}
-                  course={course}
-                  onEnroll={handleEnroll}
-                />
+                <CourseRecommendationCard key={course.id} course={course} />
               ))}
             </div>
           </TabsContent>
