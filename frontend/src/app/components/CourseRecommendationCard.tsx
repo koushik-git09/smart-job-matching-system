@@ -1,14 +1,29 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { Star, Clock, TrendingUp, ExternalLink, BookmarkPlus } from 'lucide-react';
-import type { CourseRecommendation } from '@/app/types';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import {
+  Star,
+  Clock,
+  TrendingUp,
+  ExternalLink,
+  BookmarkPlus,
+} from "lucide-react";
+import type { CourseRecommendation } from "@/app/types";
 
 interface CourseRecommendationCardProps {
   course: CourseRecommendation;
+  onEnroll?: (course: CourseRecommendation) => void | Promise<void>;
 }
 
-export function CourseRecommendationCard({ course }: CourseRecommendationCardProps) {
+export function CourseRecommendationCard({
+  course,
+  onEnroll,
+}: CourseRecommendationCardProps) {
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
@@ -57,7 +72,15 @@ export function CourseRecommendationCard({ course }: CourseRecommendationCardPro
 
         {/* Actions */}
         <div className="flex gap-3">
-          <Button className="flex-1">
+          <Button
+            className="flex-1"
+            onClick={() => {
+              onEnroll?.(course);
+              if (course.url) {
+                window.open(course.url, "_blank", "noopener,noreferrer");
+              }
+            }}
+          >
             <ExternalLink className="w-4 h-4 mr-2" />
             Enroll Now
           </Button>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -31,16 +31,22 @@ import { CourseRecommendationCard } from "@/app/components/CourseRecommendationC
 import { CareerPathView } from "@/app/components/CareerPathView";
 import { LearningProgressTracker } from "@/app/components/LearningProgressTracker";
 import { ResumeUpload } from "@/app/components/ResumeUpload";
-import {
-  mockJobMatches,
-  mockCourseRecommendations,
-  mockCareerPath,
-  mockSkillRadarData,
-  mockJobSeekerProfile,
-} from "@/app/data/mockData";
+import { mockSkillRadarData } from "@/app/data/mockData";
 import type { JobSeekerProfile } from "@/app/types";
-import { useEffect } from "react";
-import { matchJob } from "@/services/api";
+import type {
+  CareerPath,
+  CourseProgress,
+  CourseRecommendation,
+  Skill,
+  SkillMatch,
+  SkillRadarData,
+} from "@/app/types";
+import {
+  getJobSeekerDashboard,
+  getLearningCourses,
+  saveLearningCourse,
+  uploadResume,
+} from "@/services/api";
 
 interface JobSeekerDashboardProps {
   profile: JobSeekerProfile;
@@ -53,16 +59,131 @@ export function JobSeekerDashboard({
 }: JobSeekerDashboardProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [dashboard, setDashboard] = useState<{
+    readinessScore: number;
+    matchedJobs: number;
+    skillsToImprove: number;
+    learningProgress: number;
+    extractedSkills: string[];
+    skillRadarData: SkillRadarData[];
+    jobMatches: SkillMatch[];
+    courseRecommendations: CourseRecommendation[];
+    careerPath: CareerPath;
+  } | null>(null);
+
+  const [learningCourses, setLearningCourses] = useState<CourseProgress[]>([]);
+
+  const jobMatches = dashboard?.jobMatches ?? [];
+  const courseRecommendations = dashboard?.courseRecommendations ?? [];
+  const careerPath = dashboard?.careerPath ?? null;
+  const extractedSkills = dashboard?.extractedSkills ?? [];
+
+  const derivedSkills: Skill[] = useMemo(() => {
+    return extractedSkills.map((name, idx) => ({
+      id: `${idx + 1}`,
+      name,
+      level: "intermediate",
+      yearsOfExperience: 0,
+      category: "Resume",
+    }));
+  }, [extractedSkills]);
+
+  const derivedLearningProgress: CourseProgress[] = useMemo(() => {
+    if (learningCourses.length > 0) return learningCourses;
+    return courseRecommendations.map((c) => ({
+      courseId: c.id,
+      courseTitle: c.title,
+      platform: c.platform,
+      status: "not-started",
+      progress: 0,
+      skillsImproved: c.skillsCovered,
+    }));
+  }, [courseRecommendations, learningCourses]);
+
+  const refreshLearning = async () => {
+    try {
+      const data = await getLearningCourses();
+      const courses = (data?.courses ?? []).map((c: any) => ({
+        courseId: c.courseId,
+        courseTitle: c.courseTitle,
+        platform: c.platform,
+        status: c.status,
+        progress: c.progress,
+        startedDate: c.startedDate,
+        completedDate: c.completedDate,
+        skillsImproved: c.skillsImproved ?? [],
+      }));
+      setLearningCourses(courses);
+    } catch {
+      setLearningCourses([]);
+    }
+  };
+
+  const refreshDashboard = async () => {
+    try {
+      const data = await getJobSeekerDashboard();
+      setDashboard(data);
+    } catch {
+      setDashboard(null);
+    }
+  };
+
+  useEffect(() => {
+    refreshDashboard();
+    refreshLearning();
+  }, []);
+
+  const handleResumeUpload = async (file: File) => {
+    await uploadResume(file);
+    await refreshDashboard();
+    await refreshLearning();
+  };
+
+  const handleEnroll = async (course: CourseRecommendation) => {
+    await saveLearningCourse(course.id, {
+      courseTitle: course.title,
+      platform: course.platform,
+      skillsImproved: course.skillsCovered,
+      status: "in-progress",
+      progress: 10,
+    });
+    await refreshDashboard();
+    await refreshLearning();
+  };
+
+  const handleAdvanceStatus = async (course: CourseProgress) => {
+    const nextStatus =
+      course.status === "not-started"
+        ? "in-progress"
+        : course.status === "in-progress"
+          ? "completed"
+          : "completed";
+
+    const nextProgress =
+      nextStatus === "completed"
+        ? 100
+        : nextStatus === "in-progress"
+          ? Math.max(10, course.progress)
+          : 0;
+
+    await saveLearningCourse(course.courseId, {
+      courseTitle: course.courseTitle,
+      platform: course.platform,
+      skillsImproved: course.skillsImproved,
+      status: nextStatus,
+      progress: nextProgress,
+      startedDate: course.startedDate ?? null,
+      completedDate: course.completedDate ?? null,
+    });
+    await refreshDashboard();
+    await refreshLearning();
+  };
 
   // Calculate overall readiness score (average of top 3 job matches)
-  const overallReadinessScore = Math.round(
-    mockJobMatches
-      .slice(0, 3)
-      .reduce((sum, match) => sum + match.readinessScore, 0) / 3,
-  );
+  const overallReadinessScore = dashboard?.readinessScore ?? 0;
 
   // Get all skill gaps
-  const allSkillGaps = mockJobMatches.flatMap((match) => match.missingSkills);
+  const allSkillGaps = jobMatches.flatMap((match) => match.missingSkills);
   const criticalGaps = allSkillGaps.filter(
     (gap) => gap.priority === "critical",
   );
@@ -95,6 +216,7 @@ export function JobSeekerDashboard({
       <ResumeUpload
         open={showResumeUpload}
         onClose={() => setShowResumeUpload(false)}
+        onUpload={handleResumeUpload}
       />
 
       {/* Main Content */}
@@ -124,7 +246,7 @@ export function JobSeekerDashboard({
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Matched Jobs</p>
                   <p className="text-3xl font-bold text-green-600">
-                    {mockJobMatches.length}
+                    {dashboard?.matchedJobs ?? 0}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -142,7 +264,7 @@ export function JobSeekerDashboard({
                     Skills to Improve
                   </p>
                   <p className="text-3xl font-bold text-orange-600">
-                    {uniqueCriticalGaps.length}
+                    {dashboard?.skillsToImprove ?? uniqueCriticalGaps.length}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
@@ -160,7 +282,7 @@ export function JobSeekerDashboard({
                     Learning Progress
                   </p>
                   <p className="text-3xl font-bold text-purple-600">
-                    {profile.learningProgress.length}
+                    {dashboard?.learningProgress ?? 0}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -190,7 +312,7 @@ export function JobSeekerDashboard({
                   <CardTitle>Skill Analysis</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <SkillRadarChart data={mockSkillRadarData} />
+                  <SkillRadarChart data={dashboard?.skillRadarData ?? []} />
                   <div className="mt-4 flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-blue-500 rounded-full" />
@@ -210,7 +332,7 @@ export function JobSeekerDashboard({
                   <CardTitle>Top Job Matches</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {mockJobMatches.slice(0, 3).map((job) => (
+                  {jobMatches.slice(0, 3).map((job) => (
                     <div
                       key={job.jobId}
                       className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -287,7 +409,10 @@ export function JobSeekerDashboard({
                 <CardTitle>Current Learning Progress</CardTitle>
               </CardHeader>
               <CardContent>
-                <LearningProgressTracker courses={profile.learningProgress} />
+                <LearningProgressTracker
+                  courses={derivedLearningProgress}
+                  onAdvanceStatus={handleAdvanceStatus}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -301,7 +426,7 @@ export function JobSeekerDashboard({
                 Upload Resume
               </Button>
             </div>
-            {mockJobMatches.map((job) => (
+            {jobMatches.map((job) => (
               <JobMatchCard key={job.jobId} match={job} />
             ))}
           </TabsContent>
@@ -323,7 +448,7 @@ export function JobSeekerDashboard({
                   <CardTitle>Skill Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {profile.skills.map((skill) => (
+                  {derivedSkills.map((skill) => (
                     <div key={skill.id}>
                       <div className="flex justify-between items-center mb-1">
                         <span className="font-medium">{skill.name}</span>
@@ -359,7 +484,7 @@ export function JobSeekerDashboard({
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {mockJobMatches.map((job) => (
+                  {jobMatches.map((job) => (
                     <div key={job.jobId}>
                       <h4 className="font-semibold mb-3">
                         {job.jobTitle} at {job.company}
@@ -417,15 +542,29 @@ export function JobSeekerDashboard({
               </p>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
-              {mockCourseRecommendations.map((course) => (
-                <CourseRecommendationCard key={course.id} course={course} />
+              {courseRecommendations.map((course) => (
+                <CourseRecommendationCard
+                  key={course.id}
+                  course={course}
+                  onEnroll={handleEnroll}
+                />
               ))}
             </div>
           </TabsContent>
 
           {/* Career Path Tab */}
           <TabsContent value="career" className="space-y-6">
-            <CareerPathView careerPath={mockCareerPath} />
+            <CareerPathView
+              careerPath={
+                careerPath ?? {
+                  currentRole: "Current Role",
+                  targetRole: "Target Role",
+                  readiness: 0,
+                  estimatedTimeline: "",
+                  intermediateSteps: [],
+                }
+              }
+            />
           </TabsContent>
         </Tabs>
       </div>

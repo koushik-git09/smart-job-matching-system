@@ -5,6 +5,7 @@ from routes import dashboard
 from routes import resume
 from routes import jobs
 from routes import match
+from routes import learning
 
 app = FastAPI()
 
@@ -12,6 +13,7 @@ app.include_router(dashboard.router)
 app.include_router(resume.router, prefix="/resume", tags=["Resume"])
 app.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 app.include_router(match.router, prefix="/match", tags=["Matching"])
+app.include_router(learning.router, prefix="/learning", tags=["Learning"])
 
 
 app.add_middleware(

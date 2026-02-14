@@ -1,8 +1,5 @@
 import pdfplumber
-import spacy
 import re
-
-nlp = spacy.load("en_core_web_sm")
 
 # Expanded skill database
 SKILLS_DB = [

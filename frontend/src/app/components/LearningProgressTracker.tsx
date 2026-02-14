@@ -5,10 +5,12 @@ import type { CourseProgress } from "@/app/types";
 
 interface LearningProgressTrackerProps {
   courses: CourseProgress[];
+  onAdvanceStatus?: (course: CourseProgress) => void | Promise<void>;
 }
 
 export function LearningProgressTracker({
   courses,
+  onAdvanceStatus,
 }: LearningProgressTrackerProps) {
   if (courses.length === 0) {
     return (
@@ -31,6 +33,9 @@ export function LearningProgressTracker({
             <Badge
               variant={course.status === "completed" ? "default" : "secondary"}
               className={course.status === "completed" ? "bg-green-600" : ""}
+              onClick={() => onAdvanceStatus?.(course)}
+              role={onAdvanceStatus ? "button" : undefined}
+              tabIndex={onAdvanceStatus ? 0 : undefined}
             >
               {course.status === "completed" && (
                 <CheckCircle2 className="w-3 h-3 mr-1" />

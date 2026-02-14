@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { LandingPage } from "@/app/components/LandingPage";
 import { JobSeekerDashboard } from "@/app/components/JobSeekerDashboard";
@@ -9,31 +10,36 @@ import {
   mockJobSeekerProfile,
   mockRecruiterProfile,
 } from "@/app/data/mockData";
-import type { AuthRole } from "@/app/auth/types";
+import { getToken, logoutUser } from "@/services/auth";
+
+function ProtectedRoute({ children }: { children: ReactElement }) {
+  const token = getToken();
+
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
 
 function AppRoutes() {
   const navigate = useNavigate();
 
   return (
     <Routes>
-      {/* Landing */}
       <Route
         path="/"
         element={
           <LandingPage
-            onDemoMode={(type) =>
-              navigate(
-                type === "jobseeker"
-                  ? "/seeker-dashboard"
-                  : "/recruiter-dashboard",
-              )
-            }
-            onLogin={(role: AuthRole) =>
+            onSelectUserType={() => {
+              // Selection is handled via onLogin/onSignup buttons in the UI.
+            }}
+            onLogin={(role) =>
               navigate(
                 role === "jobseeker" ? "/login/jobseeker" : "/login/recruiter",
               )
             }
-            onSignup={(role: AuthRole) =>
+            onSignup={(role) =>
               navigate(
                 role === "jobseeker"
                   ? "/signup/jobseeker"
@@ -44,7 +50,6 @@ function AppRoutes() {
         }
       />
 
-      {/* Login */}
       <Route
         path="/login/:role"
         element={
@@ -54,7 +59,6 @@ function AppRoutes() {
         }
       />
 
-      {/* Signup */}
       <Route
         path="/signup/:role"
         element={
@@ -64,28 +68,36 @@ function AppRoutes() {
         }
       />
 
-      {/* Dashboards */}
       <Route
         path="/seeker-dashboard"
         element={
-          <JobSeekerDashboard
-            profile={mockJobSeekerProfile}
-            onLogout={() => navigate("/")}
-          />
+          <ProtectedRoute>
+            <JobSeekerDashboard
+              profile={mockJobSeekerProfile}
+              onLogout={() => {
+                logoutUser();
+                navigate("/");
+              }}
+            />
+          </ProtectedRoute>
         }
       />
 
       <Route
         path="/recruiter-dashboard"
         element={
-          <RecruiterDashboard
-            profile={mockRecruiterProfile}
-            onLogout={() => navigate("/")}
-          />
+          <ProtectedRoute>
+            <RecruiterDashboard
+              profile={mockRecruiterProfile}
+              onLogout={() => {
+                logoutUser();
+                navigate("/");
+              }}
+            />
+          </ProtectedRoute>
         }
       />
 
-      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

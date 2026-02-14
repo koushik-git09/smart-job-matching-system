@@ -9,8 +9,9 @@ SECRET_KEY = "supersecretkey"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-# This tells FastAPI to read Authorization header
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+# This tells FastAPI to read Authorization header.
+# tokenUrl is used for OpenAPI/Swagger; the actual route is /auth/login.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def create_access_token(data: dict):
