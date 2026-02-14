@@ -8,7 +8,7 @@ import { Checkbox } from "@/app/components/ui/checkbox";
 import { Loader2, LogIn, Mail, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import type { AuthRole } from "@/app/auth/types";
-import { loginWithOptions } from "@/app/auth/authService";
+import { loginWithOptions } from "@/app/auth/auth";
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -36,9 +36,16 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      await loginWithOptions(userRole, { email, password }, { rememberMe });
+      const result = await loginWithOptions(
+        userRole,
+        { email, password },
+        { rememberMe },
+      );
 
-      // 🔥 Directly go to dashboard (NO profile forcing)
+      // ✅ Store token persistently
+      localStorage.setItem("access_token", result.access_token);
+      localStorage.setItem("user_role", result.role);
+
       navigate(
         userRole === "jobseeker" ? "/seeker-dashboard" : "/recruiter-dashboard",
       );
@@ -64,11 +71,10 @@ export function LoginForm() {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label>Email</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
             <Input
-              id="email"
               type="email"
               className="pl-9"
               value={email}
@@ -79,11 +85,10 @@ export function LoginForm() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label>Password</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
             <Input
-              id="password"
               type="password"
               className="pl-9"
               value={password}
@@ -97,15 +102,11 @@ export function LoginForm() {
               checked={rememberMe}
               onCheckedChange={(v) => setRememberMe(Boolean(v))}
             />
-            <Label className="text-sm text-gray-700">Remember me</Label>
+            <Label className="text-sm">Remember me</Label>
           </div>
         </div>
 
-        <Button
-          type="submit"
-          className={`w-full ${accents}`}
-          disabled={isLoading}
-        >
+        <Button type="submit" className={`w-full ${accents}`}>
           {isLoading ? (
             <Loader2 className="mr-2 size-4 animate-spin" />
           ) : (
@@ -113,23 +114,6 @@ export function LoginForm() {
           )}
           Login
         </Button>
-
-        <div className="text-center text-sm text-gray-600">
-          Don’t have an account?{" "}
-          <button
-            type="button"
-            className="font-medium underline underline-offset-4"
-            onClick={() =>
-              navigate(
-                userRole === "jobseeker"
-                  ? "/signup/jobseeker"
-                  : "/signup/recruiter",
-              )
-            }
-          >
-            Sign up
-          </button>
-        </div>
       </div>
     </motion.form>
   );

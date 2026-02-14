@@ -18,18 +18,14 @@ pwd_context = CryptContext(
 @router.post("/signup")
 async def signup(user: UserCreate):
     users_ref = db.collection("users")
-    existing = list(
-    users_ref.where("email", "==", user.email).limit(1).stream()
-)
-
-
-    if list(existing):
+    user_doc_ref = users_ref.document(user.email)
+    if user_doc_ref.get().exists:
         raise HTTPException(status_code=400, detail="User already exists")
 
     # Hash password safely
     hashed_password = pwd_context.hash(user.password)
 
-    users_ref.add({
+    user_doc_ref.set({
         "name": user.name,
         "email": user.email,
         "password": hashed_password,
@@ -41,15 +37,12 @@ async def signup(user: UserCreate):
 
 @router.post("/login")
 async def login(user: UserLogin):
-    users_ref = db.collection("users")
-    users = users_ref.where("email", "==", user.email).stream()
-
-    user_doc = None
-    for doc in users:
-        user_doc = doc.to_dict()
-
-    if not user_doc:
+    user_doc_ref = db.collection("users").document(user.email)
+    snapshot = user_doc_ref.get()
+    if not snapshot.exists:
         raise HTTPException(status_code=400, detail="Invalid credentials")
+
+    user_doc = snapshot.to_dict()
 
     # Verify password safely
     if not pwd_context.verify(user.password, user_doc["password"]):
