@@ -17,12 +17,10 @@ import type { CourseRecommendation } from "@/app/types";
 
 interface CourseRecommendationCardProps {
   course: CourseRecommendation;
-  onEnroll?: (course: CourseRecommendation) => void | Promise<void>;
 }
 
 export function CourseRecommendationCard({
   course,
-  onEnroll,
 }: CourseRecommendationCardProps) {
   return (
     <Card className="hover:shadow-lg transition-shadow">
@@ -75,7 +73,6 @@ export function CourseRecommendationCard({
           <Button
             className="flex-1"
             onClick={() => {
-              onEnroll?.(course);
               if (course.url) {
                 window.open(course.url, "_blank", "noopener,noreferrer");
               }

@@ -3,15 +3,20 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-from services.semantic_matching import calculate_semantic_match
-
 
 def _skill_name(x: Any) -> str:
     if isinstance(x, str):
-        return x
+        return x.strip()
     if isinstance(x, dict):
-        return str(x.get("name", "")).strip()
+        for key in ("name", "skillName", "skill", "title"):
+            if key in x and x.get(key):
+                return str(x.get(key, "")).strip()
+        return ""
     return str(x).strip()
+
+
+def _norm_skill(x: Any) -> str:
+    return _skill_name(x).strip().lower()
 
 
 def compute_job_match(user_skills: list[str], job: dict) -> dict:
@@ -19,40 +24,42 @@ def compute_job_match(user_skills: list[str], job: dict) -> dict:
     title = job.get("title") or ""
     company = job.get("company") or ""
 
-    req_skill_objs = job.get("required_skills") or []
+    req_skill_objs = job.get("required_skills") or job.get("requiredSkills") or []
     req_names = [_skill_name(s) for s in req_skill_objs if _skill_name(s)]
 
-    semantic = calculate_semantic_match(user_skills, req_names)
-    matched = semantic.get("matched_skills", [])
-    gap_names = semantic.get("skill_gap", [])
+    user_norm = {_norm_skill(s) for s in user_skills if _norm_skill(s)}
+    req_norm_by_display: dict[str, str] = {display: _norm_skill(display) for display in req_names}
+
+    matched_display = [d for d in req_names if req_norm_by_display.get(d) in user_norm]
+    gap_display = [d for d in req_names if req_norm_by_display.get(d) not in user_norm]
 
     # Enrich missing skills with metadata from job.required_skills
-    meta_by_name: dict[str, dict] = {}
+    meta_by_norm: dict[str, dict] = {}
     for s in req_skill_objs:
         if not isinstance(s, dict):
             continue
-        name = _skill_name(s)
-        if not name:
+        norm = _norm_skill(s)
+        if not norm:
             continue
-        meta_by_name[name] = s
+        meta_by_norm[norm] = s
 
     missing_skills = []
-    for name in gap_names:
-        meta = meta_by_name.get(name, {})
-        pr = meta.get("priority", "must-have")
+    for display in gap_display:
+        meta = meta_by_norm.get(_norm_skill(display), {})
+        pr = str(meta.get("priority", "must-have") or "must-have")
         missing_skills.append(
             {
-                "skillName": name,
+                "skillName": display,
                 "priority": "critical" if pr == "must-have" else "optional",
                 "currentLevel": None,
-                "requiredLevel": meta.get("required_level"),
-                "estimatedLearningTime": meta.get("estimated_learning_time"),
+                "requiredLevel": str(meta.get("required_level") or meta.get("requiredLevel") or "N/A"),
+                "estimatedLearningTime": str(meta.get("estimated_learning_time") or meta.get("estimatedLearningTime") or "N/A"),
             }
         )
 
-    strength_areas = list(matched)
+    strength_areas = list(matched_display)
 
-    match_percentage = float(semantic.get("match_score", 0))
+    match_percentage = (len(matched_display) / len(req_names) * 100) if req_names else 0.0
     readiness_score = round(match_percentage)
 
     return {
@@ -92,22 +99,23 @@ def compute_dashboard(user_skills: list[str], jobs: list[dict]) -> dict:
         "Statistics",
     ]
 
-    skill_set = set([s.strip() for s in user_skills if s and isinstance(s, str)])
+    user_norm = {_norm_skill(s) for s in user_skills if _norm_skill(s)}
     radar = []
     req_counts = Counter()
     for j in jobs:
-        for rs in j.get("required_skills") or []:
-            name = _skill_name(rs)
-            if name:
-                req_counts[name] += 1
+        for rs in (j.get("required_skills") or j.get("requiredSkills") or []):
+            norm = _norm_skill(rs)
+            if norm:
+                req_counts[norm] += 1
 
     max_req = max(req_counts.values()) if req_counts else 1
     for a in axes:
+        a_norm = a.strip().lower()
         radar.append(
             {
                 "skill": a,
-                "current": 100 if a in skill_set else 0,
-                "required": round((req_counts.get(a, 0) / max_req) * 100),
+                "current": 100 if a_norm in user_norm else 0,
+                "required": round((req_counts.get(a_norm, 0) / max_req) * 100),
             }
         )
 

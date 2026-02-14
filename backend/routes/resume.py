@@ -3,6 +3,7 @@ from services.resume_parser import extract_text_from_pdf, extract_skills
 from services.firebase import db
 from models.token import verify_token
 from services.dashboard_compute import compute_dashboard
+from services.job_catalog import default_jobs
 import shutil
 import os
 from datetime import datetime
@@ -44,6 +45,13 @@ async def upload_resume(
         d = s.to_dict() or {}
         d.setdefault("id", s.id)
         jobs.append(d)
+
+    # If jobs were never seeded, seed a default catalog so the portal works out-of-the-box.
+    if not jobs:
+        seeded = default_jobs()
+        for job in seeded:
+            db.collection("jobs").document(job.id).set(job.model_dump())
+            jobs.append(job.model_dump())
     dashboard = compute_dashboard(skills, jobs)
 
     # Seed per-user learning progress docs for the recommended courses
