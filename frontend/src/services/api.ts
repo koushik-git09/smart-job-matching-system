@@ -80,3 +80,62 @@ export async function saveLearningCourse(
 
   return response.json();
 }
+
+export async function getRecruiterProfile(): Promise<any> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/recruiter/profile`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}
+
+export async function saveRecruiterProfile(payload: {
+  company: string;
+  companyDescription?: string;
+  industry?: string;
+}): Promise<any> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/recruiter/profile`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return response.json();
+}
+
+export async function createRecruiterJobPosting(payload: any): Promise<any> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/recruiter/job-postings`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return response.json();
+}
+
+export async function getCandidateMatches(jobId?: string): Promise<{ matches: any[] }> {
+  const token = getToken();
+  const qs = jobId ? `?job_id=${encodeURIComponent(jobId)}` : "";
+
+  const response = await fetch(`${BASE_URL}/recruiter/candidate-matches${qs}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}
