@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from collections import Counter
 from typing import Any
+from urllib.parse import quote_plus
+
+from services.semantic_matching import calculate_semantic_match
 
 
 def _skill_name(x: Any) -> str:
@@ -27,11 +30,22 @@ def compute_job_match(user_skills: list[str], job: dict) -> dict:
     req_skill_objs = job.get("required_skills") or job.get("requiredSkills") or []
     req_names = [_skill_name(s) for s in req_skill_objs if _skill_name(s)]
 
-    user_norm = {_norm_skill(s) for s in user_skills if _norm_skill(s)}
-    req_norm_by_display: dict[str, str] = {display: _norm_skill(display) for display in req_names}
+    user_norm_list = [_norm_skill(s) for s in user_skills if _norm_skill(s)]
+    req_norm_list = [_norm_skill(s) for s in req_names if _norm_skill(s)]
 
-    matched_display = [d for d in req_names if req_norm_by_display.get(d) in user_norm]
-    gap_display = [d for d in req_names if req_norm_by_display.get(d) not in user_norm]
+    norm_to_display: dict[str, str] = {}
+    for display in req_names:
+        n = _norm_skill(display)
+        if n and n not in norm_to_display:
+            norm_to_display[n] = display
+
+    semantic = calculate_semantic_match(user_norm_list, req_norm_list)
+    matched_norm = set([_norm_skill(s) for s in semantic.get("matched_skills", []) if _norm_skill(s)])
+    gap_norm = set([_norm_skill(s) for s in semantic.get("skill_gap", []) if _norm_skill(s)])
+
+    # Preserve ordering as in the job requirements.
+    matched_display = [d for d in req_names if _norm_skill(d) in matched_norm]
+    gap_display = [d for d in req_names if _norm_skill(d) in gap_norm]
 
     # Enrich missing skills with metadata from job.required_skills
     meta_by_norm: dict[str, dict] = {}
@@ -59,7 +73,7 @@ def compute_job_match(user_skills: list[str], job: dict) -> dict:
 
     strength_areas = list(matched_display)
 
-    match_percentage = (len(matched_display) / len(req_names) * 100) if req_names else 0.0
+    match_percentage = float(semantic.get("match_score", 0.0))
     readiness_score = round(match_percentage)
 
     return {
@@ -119,8 +133,39 @@ def compute_dashboard(user_skills: list[str], jobs: list[dict]) -> dict:
             }
         )
 
-    # Course recommendations: lightweight mapping from missing critical skills
-    course_map = {
+    # Course recommendations: map known skills to curated courses; otherwise fall back to
+    # a generic search course so recommendations still vary by resume.
+    course_map: dict[str, dict] = {
+        "Python": {
+            "title": "Python for Everybody",
+            "platform": "Coursera",
+            "duration": "4-8 weeks",
+            "level": "Beginner",
+            "readinessBoost": 10,
+            "url": "https://www.coursera.org/specializations/python",
+            "rating": 4.8,
+            "skillsCovered": ["Python", "Programming"],
+        },
+        "SQL": {
+            "title": "SQL for Data Science",
+            "platform": "Coursera",
+            "duration": "4-6 weeks",
+            "level": "Beginner",
+            "readinessBoost": 10,
+            "url": "https://www.coursera.org/learn/sql-for-data-science",
+            "rating": 4.7,
+            "skillsCovered": ["SQL", "Databases"],
+        },
+        "Data Analysis": {
+            "title": "Data Analysis with Python",
+            "platform": "Coursera",
+            "duration": "4-8 weeks",
+            "level": "Beginner",
+            "readinessBoost": 10,
+            "url": "https://www.coursera.org/learn/data-analysis-with-python",
+            "rating": 4.7,
+            "skillsCovered": ["Data Analysis", "Pandas"],
+        },
         "Deep Learning": {
             "title": "Deep Learning Specialization",
             "platform": "Coursera",
@@ -183,18 +228,45 @@ def compute_dashboard(user_skills: list[str], jobs: list[dict]) -> dict:
         },
     }
 
-    courses = []
-    for s in unique_critical:
-        if s in course_map:
-            c = course_map[s]
-            courses.append(
-                {
-                    "id": s,
-                    **c,
-                    "status": "recommended",
-                    "progress": 0,
-                }
-            )
+    # Rank missing skills by frequency across job matches so recommendations differ per resume.
+    freq = Counter()
+    for m in job_matches:
+        for g in m.get("missingSkills", []):
+            if not isinstance(g, dict):
+                continue
+            if g.get("priority") != "critical":
+                continue
+            name = _skill_name(g.get("skillName"))
+            if name:
+                freq[name] += 1
+
+    # Recommend up to 6 skills to keep the UI focused.
+    top_missing = [name for name, _ in freq.most_common(6)]
+
+    courses: list[dict] = []
+    for skill in top_missing:
+        c = course_map.get(skill)
+        if c is None:
+            q = quote_plus(skill)
+            c = {
+                "title": f"Learn {skill}",
+                "platform": "Coursera",
+                "duration": "2-6 weeks",
+                "level": "Beginner",
+                "readinessBoost": 6,
+                "url": f"https://www.coursera.org/search?query={q}",
+                "rating": 4.5,
+                "skillsCovered": [skill],
+            }
+
+        courses.append(
+            {
+                "id": skill,
+                **c,
+                "status": "recommended",
+                "progress": 0,
+            }
+        )
 
     # Career path: show the same jobs ordered by readiness as steps.
     career_steps = []
