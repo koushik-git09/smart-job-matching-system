@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections import Counter
 from typing import Any
-from urllib.parse import quote_plus
 
 from services.semantic_matching import calculate_semantic_match
+from services.catalog import list_courses_for_skill
 
 
 def _skill_name(x: Any) -> str:
@@ -102,131 +102,31 @@ def compute_dashboard(user_skills: list[str], jobs: list[dict]) -> dict:
                 missing.append(g.get("skillName"))
     unique_critical = sorted(set([x for x in missing if x]))
 
-    # Radar data: fixed axes used by the current UI.
-    axes = [
-        "Python",
-        "Machine Learning",
-        "Deep Learning",
-        "Data Analysis",
-        "SQL",
-        "TensorFlow",
-        "Statistics",
-    ]
-
+    # Radar data: dynamic axes derived from job requirements in Firestore (no in-code skill list).
     user_norm = {_norm_skill(s) for s in user_skills if _norm_skill(s)}
     radar = []
     req_counts = Counter()
+    display_by_norm: dict[str, str] = {}
     for j in jobs:
         for rs in (j.get("required_skills") or j.get("requiredSkills") or []):
+            display = _skill_name(rs)
             norm = _norm_skill(rs)
-            if norm:
-                req_counts[norm] += 1
+            if not norm:
+                continue
+            req_counts[norm] += 1
+            if display and norm not in display_by_norm:
+                display_by_norm[norm] = display
 
+    axes_norm = [n for n, _ in req_counts.most_common(7)]
     max_req = max(req_counts.values()) if req_counts else 1
-    for a in axes:
-        a_norm = a.strip().lower()
+    for n in axes_norm:
         radar.append(
             {
-                "skill": a,
-                "current": 100 if a_norm in user_norm else 0,
-                "required": round((req_counts.get(a_norm, 0) / max_req) * 100),
+                "skill": display_by_norm.get(n, n),
+                "current": 100 if n in user_norm else 0,
+                "required": round((req_counts.get(n, 0) / max_req) * 100),
             }
         )
-
-    # Course recommendations: map known skills to curated courses; otherwise fall back to
-    # a generic search course so recommendations still vary by resume.
-    course_map: dict[str, dict] = {
-        "Python": {
-            "title": "Python for Everybody",
-            "platform": "Coursera",
-            "duration": "4-8 weeks",
-            "level": "Beginner",
-            "readinessBoost": 10,
-            "url": "https://www.coursera.org/specializations/python",
-            "rating": 4.8,
-            "skillsCovered": ["Python", "Programming"],
-        },
-        "SQL": {
-            "title": "SQL for Data Science",
-            "platform": "Coursera",
-            "duration": "4-6 weeks",
-            "level": "Beginner",
-            "readinessBoost": 10,
-            "url": "https://www.coursera.org/learn/sql-for-data-science",
-            "rating": 4.7,
-            "skillsCovered": ["SQL", "Databases"],
-        },
-        "Data Analysis": {
-            "title": "Data Analysis with Python",
-            "platform": "Coursera",
-            "duration": "4-8 weeks",
-            "level": "Beginner",
-            "readinessBoost": 10,
-            "url": "https://www.coursera.org/learn/data-analysis-with-python",
-            "rating": 4.7,
-            "skillsCovered": ["Data Analysis", "Pandas"],
-        },
-        "Deep Learning": {
-            "title": "Deep Learning Specialization",
-            "platform": "Coursera",
-            "duration": "3 months",
-            "level": "Intermediate",
-            "readinessBoost": 15,
-            "url": "https://coursera.org/specializations/deep-learning",
-            "rating": 4.9,
-            "skillsCovered": ["Deep Learning", "Neural Networks", "CNNs", "RNNs"],
-        },
-        "PyTorch": {
-            "title": "PyTorch for Deep Learning",
-            "platform": "Udemy",
-            "duration": "2 months",
-            "level": "Intermediate",
-            "readinessBoost": 12,
-            "url": "https://udemy.com/pytorch-deep-learning",
-            "rating": 4.7,
-            "skillsCovered": ["PyTorch", "Deep Learning", "Computer Vision"],
-        },
-        "MLOps": {
-            "title": "MLOps Fundamentals",
-            "platform": "Coursera",
-            "duration": "2 months",
-            "level": "Intermediate",
-            "readinessBoost": 18,
-            "url": "https://coursera.org/learn/mlops",
-            "rating": 4.8,
-            "skillsCovered": ["MLOps", "Docker", "CI/CD", "Model Deployment"],
-        },
-        "Docker": {
-            "title": "Docker for Developers",
-            "platform": "Udemy",
-            "duration": "1 month",
-            "level": "Beginner",
-            "readinessBoost": 10,
-            "url": "https://udemy.com/docker",
-            "rating": 4.7,
-            "skillsCovered": ["Docker", "Containers"],
-        },
-        "Kubernetes": {
-            "title": "Kubernetes Fundamentals",
-            "platform": "Coursera",
-            "duration": "2 months",
-            "level": "Beginner",
-            "readinessBoost": 10,
-            "url": "https://coursera.org/learn/kubernetes",
-            "rating": 4.6,
-            "skillsCovered": ["Kubernetes", "Container Orchestration"],
-        },
-        "Research Publications": {
-            "title": "Writing & Publishing Research",
-            "platform": "Coursera",
-            "duration": "3 months",
-            "level": "Advanced",
-            "readinessBoost": 8,
-            "url": "https://coursera.org",
-            "rating": 4.5,
-            "skillsCovered": ["Research", "Academic Writing"],
-        },
-    }
 
     # Rank missing skills by frequency across job matches so recommendations differ per resume.
     freq = Counter()
@@ -243,30 +143,38 @@ def compute_dashboard(user_skills: list[str], jobs: list[dict]) -> dict:
     # Recommend up to 6 skills to keep the UI focused.
     top_missing = [name for name, _ in freq.most_common(6)]
 
+    # Course recommendations: read from Firestore `courses` collection (no in-code URLs).
     courses: list[dict] = []
     for skill in top_missing:
-        c = course_map.get(skill)
-        if c is None:
-            q = quote_plus(skill)
-            c = {
-                "title": f"Learn {skill}",
-                "platform": "Coursera",
-                "duration": "2-6 weeks",
-                "level": "Beginner",
-                "readinessBoost": 6,
-                "url": f"https://www.coursera.org/search?query={q}",
-                "rating": 4.5,
-                "skillsCovered": [skill],
-            }
+        # Match on normalized skill.
+        skill_norm = skill.strip().lower()
+        for c in list_courses_for_skill(skill_norm, limit=3):
+            courses.append(
+                {
+                    "id": str(c.get("id") or ""),
+                    "title": c.get("title") or "",
+                    "platform": c.get("platform") or "",
+                    "duration": c.get("duration") or "",
+                    "level": c.get("level") or "",
+                    "readinessBoost": int(c.get("readinessBoost") or c.get("readiness_boost") or 0),
+                    "url": c.get("url") or "",
+                    "rating": float(c.get("rating") or 0),
+                    "skillsCovered": c.get("skillsCovered") or c.get("skills_covered") or [],
+                    "status": "recommended",
+                    "progress": 0,
+                }
+            )
 
-        courses.append(
-            {
-                "id": skill,
-                **c,
-                "status": "recommended",
-                "progress": 0,
-            }
-        )
+    # De-dup by course id.
+    seen = set()
+    deduped = []
+    for c in courses:
+        cid = str(c.get("id") or "")
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        deduped.append(c)
+    courses = deduped[:10]
 
     # Career path: show the same jobs ordered by readiness as steps.
     career_steps = []

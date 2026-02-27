@@ -1,9 +1,10 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from services.resume_parser import extract_text_from_pdf, extract_skills
+from services.resume_parser import extract_text_from_pdf
+from services.skill_extraction import extract_skills_advanced
 from services.firebase import db
 from models.token import verify_token
 from services.dashboard_compute import compute_dashboard
-from services.job_catalog import default_jobs
+from services.role_classifier import predict_role_from_skills
 import shutil
 import os
 from datetime import datetime
@@ -25,7 +26,10 @@ async def upload_resume(
         shutil.copyfileobj(file.file, buffer)
 
     text = extract_text_from_pdf(file_path)
-    skills = extract_skills(text)
+    extracted = extract_skills_advanced(text)
+    skills = extracted.get("skills", [])
+    skills_norm = extracted.get("skills_norm", [])
+    role_pred = predict_role_from_skills(skills_norm)
 
     os.remove(file_path)
 
@@ -35,6 +39,9 @@ async def upload_resume(
     user_ref.collection("resume").document("latest").set(
         {
             "extracted_skills": skills,
+            "extracted_skills_norm": skills_norm,
+            "predicted_role": role_pred.get("predicted_role"),
+            "predicted_role_score": role_pred.get("score", 0),
             "uploaded_at": datetime.utcnow(),
         }
     )
@@ -46,15 +53,9 @@ async def upload_resume(
         d.setdefault("id", s.id)
         jobs.append(d)
 
-    # If jobs were never seeded, seed a default catalog so the portal works out-of-the-box.
-    if not jobs:
-        seeded = default_jobs()
-        for job in seeded:
-            db.collection("jobs").document(job.id).set(job.model_dump())
-            jobs.append(job.model_dump())
     dashboard = compute_dashboard(skills, jobs)
 
-    # Seed per-user learning progress docs for the recommended courses
+    # Seed per-user learning progress docs for the recommended courses (course metadata stays in `courses`).
     for c in dashboard.get("courseRecommendations", []) or []:
         if not isinstance(c, dict):
             continue
@@ -66,9 +67,7 @@ async def upload_resume(
             continue
         course_ref.set(
             {
-                "courseTitle": c.get("title") or "",
-                "platform": c.get("platform") or "",
-                "skillsImproved": c.get("skillsCovered") or [],
+                "courseId": course_id,
                 "status": "not-started",
                 "progress": 0,
                 "startedDate": None,
@@ -81,6 +80,18 @@ async def upload_resume(
     user_ref.collection("dashboard").document("latest").set(
         {
             **dashboard,
+            "predictedRole": role_pred.get("predicted_role"),
+            "updated_at": datetime.utcnow(),
+        }
+    )
+
+    # Store a compact analysis snapshot for other endpoints.
+    user_ref.collection("analysis").document("latest").set(
+        {
+            "extracted_skills": skills,
+            "extracted_skills_norm": skills_norm,
+            "predicted_role": role_pred.get("predicted_role"),
+            "predicted_role_score": role_pred.get("score", 0),
             "updated_at": datetime.utcnow(),
         }
     )
@@ -88,5 +99,6 @@ async def upload_resume(
     return {
         "message": "Resume processed successfully",
         "skills_extracted": skills,
+        "predicted_role": role_pred.get("predicted_role"),
         "dashboard": dashboard,
     }

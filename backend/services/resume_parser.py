@@ -1,33 +1,5 @@
 import pdfplumber
-import re
-
-# Expanded skill database
-SKILLS_DB = [
-    # Programming
-    "python", "java", "c++", "javascript", "typescript",
-
-    # Web Development
-    "frontend developer", "backend developer",
-    "full stack developer", "react", "angular",
-    "nodejs", "express", "django", "flask",
-
-    # Data & AI
-    "data analyst", "data scientist",
-    "machine learning engineer", "ml engineer",
-    "deep learning", "nlp", "computer vision",
-    "tensorflow", "pytorch", "scikit-learn",
-
-    # Cloud & DevOps
-    "aws", "azure", "gcp",
-    "docker", "kubernetes", "devops engineer",
-    "cloud engineer",
-
-    # Database
-    "sql", "mongodb", "postgresql",
-
-    # Tools
-    "git", "power bi", "tableau"
-]
+from services.skill_extraction import extract_skills_advanced
 
 
 def extract_text_from_pdf(file_path: str) -> str:
@@ -36,16 +8,9 @@ def extract_text_from_pdf(file_path: str) -> str:
         for page in pdf.pages:
             if page.extract_text():
                 text += page.extract_text() + "\n"
-    return text.lower()
+    return text
 
 
-def extract_skills(text: str):
-    found_skills = set()
-
-    # Exact phrase matching
-    for skill in SKILLS_DB:
-        pattern = rf"\b{re.escape(skill)}\b"
-        if re.search(pattern, text):
-            found_skills.add(skill)
-
-    return list(found_skills)
+def extract_skills(text: str) -> list[str]:
+    # Backward-compatible wrapper used by existing routes/tests.
+    return extract_skills_advanced(text).get("skills", [])

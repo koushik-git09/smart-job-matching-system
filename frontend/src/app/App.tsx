@@ -6,10 +6,6 @@ import { RecruiterDashboard } from "@/app/components/RecruiterDashboard";
 import { LoginForm } from "@/app/components/auth/LoginForm";
 import { SignupForm } from "@/app/components/auth/SignupForm";
 import { AuthLayout } from "@/app/components/auth/AuthLayout";
-import {
-  mockJobSeekerProfile,
-  mockRecruiterProfile,
-} from "@/app/data/mockData";
 import { getToken, logoutUser } from "@/services/auth";
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
@@ -73,7 +69,6 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <JobSeekerDashboard
-              profile={mockJobSeekerProfile}
               onLogout={() => {
                 logoutUser();
                 navigate("/");
@@ -88,7 +83,6 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <RecruiterDashboard
-              profile={mockRecruiterProfile}
               onLogout={() => {
                 logoutUser();
                 navigate("/");
