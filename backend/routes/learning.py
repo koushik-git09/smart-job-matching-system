@@ -20,6 +20,19 @@ def list_courses(user: dict = Depends(require_role("jobseeker"))):
     for s in snapshots:
         d = s.to_dict() or {}
         d.setdefault("courseId", s.id)
+
+        # Attach metadata from central catalog if available.
+        course_doc = db.collection("courses").document(s.id).get()
+        if course_doc.exists:
+            cd = course_doc.to_dict() or {}
+            d.setdefault("courseTitle", cd.get("title") or cd.get("courseTitle") or "")
+            d.setdefault("platform", cd.get("platform") or "")
+            d.setdefault("url", cd.get("url") or "")
+            d.setdefault("duration", cd.get("duration") or "")
+            d.setdefault("level", cd.get("level") or "")
+            d.setdefault("rating", cd.get("rating") or 0)
+            d.setdefault("skillsImproved", cd.get("skillsCovered") or cd.get("skills_covered") or [])
+
         courses.append(d)
 
     # Best-effort ordering (missing updated_at => last)

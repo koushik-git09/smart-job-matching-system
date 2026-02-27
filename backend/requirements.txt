@@ -10,3 +10,5 @@ pdfplumber
 sentence-transformers
 scikit-learn
 numpy
+spacy
+transformers

@@ -29,7 +29,6 @@ import { JobMatchCard } from "@/app/components/JobMatchCard";
 import { CourseRecommendationCard } from "@/app/components/CourseRecommendationCard";
 import { CareerPathView } from "@/app/components/CareerPathView";
 import { ResumeUpload } from "@/app/components/ResumeUpload";
-import type { JobSeekerProfile } from "@/app/types";
 import type {
   CareerPath,
   CourseRecommendation,
@@ -37,17 +36,17 @@ import type {
   SkillMatch,
   SkillRadarData,
 } from "@/app/types";
-import { getJobSeekerDashboard, uploadResume } from "@/services/api";
+import {
+  getJobSeekerDashboard,
+  getRecommendedJobs,
+  uploadResume,
+} from "@/services/api";
 
 interface JobSeekerDashboardProps {
-  profile: JobSeekerProfile;
   onLogout: () => void;
 }
 
-export function JobSeekerDashboard({
-  profile,
-  onLogout,
-}: JobSeekerDashboardProps) {
+export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const [showResumeUpload, setShowResumeUpload] = useState(false);
   const [dashboard, setDashboard] = useState<{
@@ -60,6 +59,8 @@ export function JobSeekerDashboard({
     courseRecommendations: CourseRecommendation[];
     careerPath: CareerPath;
   } | null>(null);
+
+  const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
 
   const jobMatches = dashboard?.jobMatches ?? [];
   const courseRecommendations = dashboard?.courseRecommendations ?? [];
@@ -80,8 +81,11 @@ export function JobSeekerDashboard({
     try {
       const data = await getJobSeekerDashboard();
       setDashboard(data);
+      const rec = await getRecommendedJobs();
+      setRecommendedJobs(rec?.jobs ?? []);
     } catch {
       setDashboard(null);
+      setRecommendedJobs([]);
     }
   };
 
@@ -92,6 +96,20 @@ export function JobSeekerDashboard({
   const handleResumeUpload = async (file: File) => {
     await uploadResume(file);
     await refreshDashboard();
+  };
+
+  const renderRequiredSkills = (req: any): string[] => {
+    if (!Array.isArray(req)) return [];
+    const names = req
+      .map((x) => {
+        if (typeof x === "string") return x;
+        if (x && typeof x === "object")
+          return x.name || x.skillName || x.skill || x.title;
+        return "";
+      })
+      .filter((x) => typeof x === "string" && x.trim().length > 0)
+      .map((x) => x.trim());
+    return Array.from(new Set(names));
   };
 
   // Calculate overall readiness score (average of top 3 job matches)
@@ -311,9 +329,79 @@ export function JobSeekerDashboard({
                 Upload Resume
               </Button>
             </div>
-            {jobMatches.map((job) => (
-              <JobMatchCard key={job.jobId} match={job} />
-            ))}
+
+            {/* Firestore-backed recommendations with external apply links */}
+            <div className="space-y-4">
+              {recommendedJobs.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6 text-sm text-gray-600">
+                    No recommended jobs yet. Upload your resume and make sure
+                    the Firestore `jobs` collection has job postings.
+                  </CardContent>
+                </Card>
+              ) : (
+                recommendedJobs.map((job: any) => {
+                  const reqSkills = renderRequiredSkills(job.required_skills);
+                  const applyLink = (job.external_apply_link || "").toString();
+                  return (
+                    <Card key={job.id}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <CardTitle className="text-lg">
+                              {job.title}
+                            </CardTitle>
+                            <p className="text-sm text-gray-600">
+                              {job.company}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {(job.location || "").toString()}{" "}
+                              {job.type ? `• ${job.type}` : ""}
+                            </p>
+                          </div>
+                          <Badge>{Number(job.match_score ?? 0)}% Match</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {reqSkills.slice(0, 10).map((s) => (
+                            <Badge key={s} variant="secondary">
+                              {s}
+                            </Badge>
+                          ))}
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button
+                            disabled={!applyLink}
+                            onClick={() => {
+                              if (!applyLink) return;
+                              window.open(
+                                applyLink,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            }}
+                          >
+                            Apply Now
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Existing skill-gap match cards (no external links) */}
+            {jobMatches.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold">Skill Gap Analysis</h3>
+                {jobMatches.map((job) => (
+                  <JobMatchCard key={job.jobId} match={job} />
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Skills Tab */}

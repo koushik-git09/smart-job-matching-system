@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from models.token import require_role
 from services.firebase import db
 from services.dashboard_compute import compute_dashboard
-from services.job_catalog import default_jobs
 from datetime import datetime
 
 router = APIRouter()
@@ -48,12 +47,6 @@ def seeker_dashboard(user: dict = Depends(require_role("jobseeker"))):
                     d = s.to_dict() or {}
                     d.setdefault("id", s.id)
                     jobs.append(d)
-
-                if not jobs:
-                    seeded = default_jobs()
-                    for job in seeded:
-                        db.collection("jobs").document(job.id).set(job.model_dump())
-                        jobs.append(job.model_dump())
 
                 computed = compute_dashboard([str(x) for x in skills], jobs)
                 computed["updated_at"] = datetime.utcnow()
