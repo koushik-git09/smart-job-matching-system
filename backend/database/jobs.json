@@ -1,0 +1,182 @@
+{
+  "jobs": {
+
+    "job1": {
+      "title": "Frontend Developer Intern",
+      "company": "TechNova",
+      "required_skills": ["html","css","javascript","react"],
+      "external_apply_link": "https://linkedin.com",
+      "location": "Chennai",
+      "type": "Internship",
+      "description": "Looking for a React frontend intern."
+    },
+
+    "job2": {
+      "title": "Backend Developer",
+      "company": "CodeWorks",
+      "required_skills": ["nodejs","express","mongodb"],
+      "external_apply_link": "https://indeed.com",
+      "location": "Bangalore",
+      "type": "Full Time"
+    },
+
+    "job3": {
+      "title": "Full Stack Developer",
+      "company": "InnovateTech",
+      "required_skills": ["html","css","javascript","nodejs"],
+      "external_apply_link": "https://naukri.com",
+      "location": "Hyderabad",
+      "type": "Full Time"
+    },
+
+    "job4": {
+      "title": "Data Scientist Intern",
+      "company": "DataLabs",
+      "required_skills": ["python","pandas","numpy"],
+      "external_apply_link": "https://linkedin.com",
+      "location": "Pune",
+      "type": "Internship"
+    },
+
+    "job5": {
+      "title": "ML Engineer",
+      "company": "AIWorks",
+      "required_skills": ["python","machinelearning","tensorflow"],
+      "external_apply_link": "https://indeed.com",
+      "location": "Bangalore",
+      "type": "Full Time"
+    },
+
+    "job6": {
+      "title": "Cloud Engineer",
+      "company": "SkyNet Solutions",
+      "required_skills": ["aws","docker","linux"],
+      "external_apply_link": "https://naukri.com",
+      "location": "Chennai",
+      "type": "Full Time"
+    },
+
+    "job7": {
+      "title": "DevOps Engineer",
+      "company": "CloudMatrix",
+      "required_skills": ["docker","kubernetes","cicd"],
+      "external_apply_link": "https://linkedin.com",
+      "location": "Hyderabad",
+      "type": "Full Time"
+    },
+
+    "job8": {
+      "title": "Android Developer",
+      "company": "Appify",
+      "required_skills": ["java","firebase"],
+      "external_apply_link": "https://indeed.com",
+      "location": "Bangalore",
+      "type": "Full Time"
+    },
+
+    "job9": {
+      "title": "Python Developer",
+      "company": "SoftTech",
+      "required_skills": ["python","django"],
+      "external_apply_link": "https://naukri.com",
+      "location": "Chennai",
+      "type": "Full Time"
+    },
+
+    "job10": {
+      "title": "Java Developer",
+      "company": "ByteCraft",
+      "required_skills": ["java","springboot"],
+      "external_apply_link": "https://linkedin.com",
+      "location": "Pune",
+      "type": "Full Time"
+    },
+
+    "job11": {
+      "title": "React Developer",
+      "company": "Webify",
+      "required_skills": ["react","javascript"],
+      "external_apply_link": "https://indeed.com",
+      "location": "Bangalore",
+      "type": "Full Time"
+    },
+
+    "job12": {
+      "title": "Node.js Developer",
+      "company": "BackendPro",
+      "required_skills": ["nodejs","express"],
+      "external_apply_link": "https://linkedin.com",
+      "location": "Hyderabad",
+      "type": "Full Time"
+    },
+
+    "job13": {
+      "title": "Data Analyst",
+      "company": "InsightCorp",
+      "required_skills": ["sql","excel","powerbi"],
+      "external_apply_link": "https://naukri.com",
+      "location": "Chennai",
+      "type": "Full Time"
+    },
+
+    "job14": {
+      "title": "UI/UX Designer",
+      "company": "Creatix",
+      "required_skills": ["figma","html","css"],
+      "external_apply_link": "https://linkedin.com",
+      "location": "Bangalore",
+      "type": "Full Time"
+    },
+
+    "job15": {
+      "title": "QA Engineer",
+      "company": "TestWorks",
+      "required_skills": ["selenium","apitesting"],
+      "external_apply_link": "https://indeed.com",
+      "location": "Hyderabad",
+      "type": "Full Time"
+    },
+
+    "job16": {"title":"Business Analyst","company":"FinEdge","required_skills":["sql","tableau"],"external_apply_link":"https://linkedin.com","location":"Chennai","type":"Full Time"},
+    "job17": {"title":"Cybersecurity Analyst","company":"SecureNet","required_skills":["cybersecurity","linux"],"external_apply_link":"https://indeed.com","location":"Bangalore","type":"Full Time"},
+    "job18": {"title":"Blockchain Developer","company":"BlockTech","required_skills":["blockchain","solidity"],"external_apply_link":"https://naukri.com","location":"Hyderabad","type":"Full Time"},
+    "job19": {"title":"Game Developer","company":"GameSphere","required_skills":["cpp","unity"],"external_apply_link":"https://linkedin.com","location":"Pune","type":"Full Time"},
+    "job20": {"title":"IoT Engineer","company":"SmartEdge","required_skills":["iot","embedded"],"external_apply_link":"https://indeed.com","location":"Chennai","type":"Full Time"},
+
+    "job21": {"title":"Site Reliability Engineer","company":"CloudOps","required_skills":["linux","docker"],"external_apply_link":"https://linkedin.com","location":"Bangalore","type":"Full Time"},
+    "job22": {"title":"ETL Developer","company":"DataStream","required_skills":["sql","spark"],"external_apply_link":"https://naukri.com","location":"Hyderabad","type":"Full Time"},
+    "job23": {"title":"Big Data Engineer","company":"DataScale","required_skills":["spark","hadoop"],"external_apply_link":"https://indeed.com","location":"Pune","type":"Full Time"},
+    "job24": {"title":"Kubernetes Engineer","company":"DevCloud","required_skills":["kubernetes","docker"],"external_apply_link":"https://linkedin.com","location":"Chennai","type":"Full Time"},
+    "job25": {"title":"AWS Engineer","company":"SkyHigh","required_skills":["aws","linux"],"external_apply_link":"https://indeed.com","location":"Bangalore","type":"Full Time"},
+
+    "job26": {"title":"Software Engineer","company":"TechCore","required_skills":["java","dsa"],"external_apply_link":"https://naukri.com","location":"Hyderabad","type":"Full Time"},
+    "job27": {"title":"Web Developer","company":"NetSolutions","required_skills":["html","css","javascript"],"external_apply_link":"https://linkedin.com","location":"Chennai","type":"Full Time"},
+    "job28": {"title":"Mobile App Developer","company":"AppHub","required_skills":["java","swift"],"external_apply_link":"https://indeed.com","location":"Bangalore","type":"Full Time"},
+    "job29": {"title":"GraphQL Developer","company":"APIWorks","required_skills":["graphql","nodejs"],"external_apply_link":"https://linkedin.com","location":"Hyderabad","type":"Full Time"},
+    "job30": {"title":"Microservices Developer","company":"ScaleTech","required_skills":["microservices","docker"],"external_apply_link":"https://naukri.com","location":"Pune","type":"Full Time"},
+
+    "job31": {"title":"R Developer","company":"StatLab","required_skills":["r","pandas"],"external_apply_link":"https://linkedin.com","location":"Chennai","type":"Full Time"},
+    "job32": {"title":"Tableau Developer","company":"BIWorks","required_skills":["tableau","sql"],"external_apply_link":"https://indeed.com","location":"Bangalore","type":"Full Time"},
+    "job33": {"title":"Power BI Analyst","company":"DataViz","required_skills":["powerbi","excel"],"external_apply_link":"https://linkedin.com","location":"Hyderabad","type":"Full Time"},
+    "job34": {"title":"Azure Engineer","company":"CloudAzure","required_skills":["azure","docker"],"external_apply_link":"https://naukri.com","location":"Chennai","type":"Full Time"},
+    "job35": {"title":"GCP Engineer","company":"CloudGCP","required_skills":["gcp","bigquery"],"external_apply_link":"https://indeed.com","location":"Bangalore","type":"Full Time"},
+
+    "job36": {"title":"Open Source Developer","company":"GitLabs","required_skills":["git","github"],"external_apply_link":"https://linkedin.com","location":"Hyderabad","type":"Full Time"},
+    "job37": {"title":"Automation Engineer","company":"AutoTest","required_skills":["selenium","apitesting"],"external_apply_link":"https://indeed.com","location":"Chennai","type":"Full Time"},
+    "job38": {"title":"Scrum Master","company":"AgileWorks","required_skills":["scrum","agile"],"external_apply_link":"https://linkedin.com","location":"Bangalore","type":"Full Time"},
+    "job39": {"title":"Project Manager","company":"ManageIT","required_skills":["agile","jira"],"external_apply_link":"https://naukri.com","location":"Hyderabad","type":"Full Time"},
+    "job40": {"title":"Security Engineer","company":"CyberSafe","required_skills":["cybersecurity","pentesting"],"external_apply_link":"https://indeed.com","location":"Pune","type":"Full Time"},
+
+    "job41": {"title":"Kafka Engineer","company":"StreamTech","required_skills":["kafka","spark"],"external_apply_link":"https://linkedin.com","location":"Chennai","type":"Full Time"},
+    "job42": {"title":"Hadoop Engineer","company":"BigDataPro","required_skills":["hadoop","spark"],"external_apply_link":"https://indeed.com","location":"Bangalore","type":"Full Time"},
+    "job43": {"title":"Shell Script Developer","company":"LinuxCore","required_skills":["shell","linux"],"external_apply_link":"https://linkedin.com","location":"Hyderabad","type":"Full Time"},
+    "job44": {"title":"Terraform Engineer","company":"InfraBuild","required_skills":["terraform","aws"],"external_apply_link":"https://naukri.com","location":"Chennai","type":"Full Time"},
+    "job45": {"title":"Jenkins Engineer","company":"BuildOps","required_skills":["jenkins","cicd"],"external_apply_link":"https://indeed.com","location":"Bangalore","type":"Full Time"},
+
+    "job46": {"title":"Next.js Developer","company":"WebNext","required_skills":["nextjs","react"],"external_apply_link":"https://linkedin.com","location":"Hyderabad","type":"Full Time"},
+    "job47": {"title":"Vue Developer","company":"VueTech","required_skills":["vue","javascript"],"external_apply_link":"https://indeed.com","location":"Chennai","type":"Full Time"},
+    "job48": {"title":"Angular Developer","company":"AngularWorks","required_skills":["angular","typescript"],"external_apply_link":"https://linkedin.com","location":"Bangalore","type":"Full Time"},
+    "job49": {"title":"Redis Engineer","company":"CachePro","required_skills":["redis","mongodb"],"external_apply_link":"https://naukri.com","location":"Hyderabad","type":"Full Time"},
+    "job50": {"title":"Oracle DBA","company":"DBMasters","required_skills":["oracle","sql"],"external_apply_link":"https://indeed.com","location":"Chennai","type":"Full Time"}
+  }
+}

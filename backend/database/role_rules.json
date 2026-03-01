@@ -1,0 +1,334 @@
+{
+  "role_rules": {
+
+    "frontend_developer": {
+      "role": "Frontend Developer",
+      "must_have_skills": ["html","css","javascript"],
+      "good_to_have_skills": ["react","bootstrap","tailwind","redux"],
+      "min_must_have_match": 2
+    },
+
+    "backend_developer": {
+      "role": "Backend Developer",
+      "must_have_skills": ["nodejs","express","mongodb"],
+      "good_to_have_skills": ["mysql","restapi","jwt","graphql"],
+      "min_must_have_match": 2
+    },
+
+    "fullstack_developer": {
+      "role": "Full Stack Developer",
+      "must_have_skills": ["html","css","javascript","nodejs"],
+      "good_to_have_skills": ["react","mongodb","express","mysql"],
+      "min_must_have_match": 3
+    },
+
+    "data_scientist": {
+      "role": "Data Scientist",
+      "must_have_skills": ["python","pandas","numpy"],
+      "good_to_have_skills": ["machinelearning","deeplearning","scikitlearn"],
+      "min_must_have_match": 2
+    },
+
+    "ml_engineer": {
+      "role": "ML Engineer",
+      "must_have_skills": ["python","machinelearning"],
+      "good_to_have_skills": ["tensorflow","pytorch","deeplearning"],
+      "min_must_have_match": 1
+    },
+
+    "ai_engineer": {
+      "role": "AI Engineer",
+      "must_have_skills": ["python","machinelearning"],
+      "good_to_have_skills": ["nlp","computervision","transformers"],
+      "min_must_have_match": 2
+    },
+
+    "data_analyst": {
+      "role": "Data Analyst",
+      "must_have_skills": ["sql","pandas","excel"],
+      "good_to_have_skills": ["powerbi","tableau","python"],
+      "min_must_have_match": 2
+    },
+
+    "cloud_engineer": {
+      "role": "Cloud Engineer",
+      "must_have_skills": ["aws","docker"],
+      "good_to_have_skills": ["kubernetes","linux","terraform"],
+      "min_must_have_match": 1
+    },
+
+    "devops_engineer": {
+      "role": "DevOps Engineer",
+      "must_have_skills": ["docker","kubernetes","linux"],
+      "good_to_have_skills": ["aws","cicd","jenkins","terraform"],
+      "min_must_have_match": 2
+    },
+
+    "android_developer": {
+      "role": "Android Developer",
+      "must_have_skills": ["java"],
+      "good_to_have_skills": ["kotlin","firebase"],
+      "min_must_have_match": 1
+    },
+
+    "ios_developer": {
+      "role": "iOS Developer",
+      "must_have_skills": ["swift"],
+      "good_to_have_skills": ["firebase"],
+      "min_must_have_match": 1
+    },
+
+    "python_developer": {
+      "role": "Python Developer",
+      "must_have_skills": ["python"],
+      "good_to_have_skills": ["django","flask","restapi"],
+      "min_must_have_match": 1
+    },
+
+    "java_developer": {
+      "role": "Java Developer",
+      "must_have_skills": ["java"],
+      "good_to_have_skills": ["springboot","mysql"],
+      "min_must_have_match": 1
+    },
+
+    "game_developer": {
+      "role": "Game Developer",
+      "must_have_skills": ["cpp"],
+      "good_to_have_skills": ["unity","c"],
+      "min_must_have_match": 1
+    },
+
+    "blockchain_developer": {
+      "role": "Blockchain Developer",
+      "must_have_skills": ["blockchain"],
+      "good_to_have_skills": ["solidity","javascript"],
+      "min_must_have_match": 1
+    },
+
+    "cybersecurity_analyst": {
+      "role": "Cybersecurity Analyst",
+      "must_have_skills": ["cybersecurity"],
+      "good_to_have_skills": ["ethicalhacking","pentesting","linux"],
+      "min_must_have_match": 1
+    },
+
+    "qa_engineer": {
+      "role": "QA Engineer",
+      "must_have_skills": ["apitesting"],
+      "good_to_have_skills": ["selenium","junit"],
+      "min_must_have_match": 1
+    },
+
+    "database_administrator": {
+      "role": "Database Administrator",
+      "must_have_skills": ["mysql","postgresql"],
+      "good_to_have_skills": ["redis","oracle"],
+      "min_must_have_match": 1
+    },
+
+    "ui_ux_designer": {
+      "role": "UI/UX Designer",
+      "must_have_skills": ["figma"],
+      "good_to_have_skills": ["html","css"],
+      "min_must_have_match": 1
+    },
+
+    "business_analyst": {
+      "role": "Business Analyst",
+      "must_have_skills": ["sql"],
+      "good_to_have_skills": ["powerbi","tableau","excel"],
+      "min_must_have_match": 1
+    },
+
+    "embedded_engineer": {
+      "role": "Embedded Engineer",
+      "must_have_skills": ["embedded"],
+      "good_to_have_skills": ["c","cpp","iot"],
+      "min_must_have_match": 1
+    },
+
+    "iot_engineer": {
+      "role": "IoT Engineer",
+      "must_have_skills": ["iot"],
+      "good_to_have_skills": ["embedded","python"],
+      "min_must_have_match": 1
+    },
+
+    "ar_vr_developer": {
+      "role": "AR/VR Developer",
+      "must_have_skills": ["arvr"],
+      "good_to_have_skills": ["unity"],
+      "min_must_have_match": 1
+    },
+
+    "big_data_engineer": {
+      "role": "Big Data Engineer",
+      "must_have_skills": ["spark","hadoop"],
+      "good_to_have_skills": ["kafka","python"],
+      "min_must_have_match": 1
+    },
+
+    "data_engineer": {
+      "role": "Data Engineer",
+      "must_have_skills": ["sql","python"],
+      "good_to_have_skills": ["spark","bigquery"],
+      "min_must_have_match": 1
+    },
+
+    "react_developer": {
+      "role": "React Developer",
+      "must_have_skills": ["react","javascript"],
+      "good_to_have_skills": ["redux","typescript"],
+      "min_must_have_match": 2
+    },
+
+    "nodejs_developer": {
+      "role": "Node.js Developer",
+      "must_have_skills": ["nodejs"],
+      "good_to_have_skills": ["express","mongodb"],
+      "min_must_have_match": 1
+    },
+
+    "flask_developer": {
+      "role": "Flask Developer",
+      "must_have_skills": ["flask","python"],
+      "good_to_have_skills": ["restapi"],
+      "min_must_have_match": 1
+    },
+
+    "django_developer": {
+      "role": "Django Developer",
+      "must_have_skills": ["django","python"],
+      "good_to_have_skills": ["postgresql"],
+      "min_must_have_match": 1
+    },
+
+    "springboot_developer": {
+      "role": "Spring Boot Developer",
+      "must_have_skills": ["springboot","java"],
+      "good_to_have_skills": ["mysql"],
+      "min_must_have_match": 1
+    },
+
+    "site_reliability_engineer": {
+      "role": "Site Reliability Engineer",
+      "must_have_skills": ["linux","docker"],
+      "good_to_have_skills": ["kubernetes","aws"],
+      "min_must_have_match": 1
+    },
+
+    "system_administrator": {
+      "role": "System Administrator",
+      "must_have_skills": ["linux"],
+      "good_to_have_skills": ["bash","shell"],
+      "min_must_have_match": 1
+    },
+
+    "technical_support_engineer": {
+      "role": "Technical Support Engineer",
+      "must_have_skills": ["linux"],
+      "good_to_have_skills": ["networking"],
+      "min_must_have_match": 1
+    },
+
+    "r_developer": {
+      "role": "R Developer",
+      "must_have_skills": ["r"],
+      "good_to_have_skills": ["pandas"],
+      "min_must_have_match": 1
+    },
+
+    "analytics_engineer": {
+      "role": "Analytics Engineer",
+      "must_have_skills": ["sql"],
+      "good_to_have_skills": ["powerbi","tableau"],
+      "min_must_have_match": 1
+    },
+
+    "etl_developer": {
+      "role": "ETL Developer",
+      "must_have_skills": ["sql"],
+      "good_to_have_skills": ["spark"],
+      "min_must_have_match": 1
+    },
+
+    "mobile_app_developer": {
+      "role": "Mobile App Developer",
+      "must_have_skills": ["java","swift"],
+      "good_to_have_skills": ["firebase"],
+      "min_must_have_match": 1
+    },
+
+    "software_engineer": {
+      "role": "Software Engineer",
+      "must_have_skills": ["java","python"],
+      "good_to_have_skills": ["dsa","git"],
+      "min_must_have_match": 1
+    },
+
+    "web_developer": {
+      "role": "Web Developer",
+      "must_have_skills": ["html","css","javascript"],
+      "good_to_have_skills": ["react","nodejs"],
+      "min_must_have_match": 2
+    },
+
+    "scrum_master": {
+      "role": "Scrum Master",
+      "must_have_skills": ["scrum"],
+      "good_to_have_skills": ["agile"],
+      "min_must_have_match": 1
+    },
+
+    "project_manager": {
+      "role": "Project Manager",
+      "must_have_skills": ["agile"],
+      "good_to_have_skills": ["scrum","jira"],
+      "min_must_have_match": 1
+    },
+
+    "api_developer": {
+      "role": "API Developer",
+      "must_have_skills": ["restapi"],
+      "good_to_have_skills": ["nodejs","django"],
+      "min_must_have_match": 1
+    },
+
+    "microservices_architect": {
+      "role": "Microservices Architect",
+      "must_have_skills": ["microservices"],
+      "good_to_have_skills": ["docker","kubernetes"],
+      "min_must_have_match": 1
+    },
+
+    "automation_engineer": {
+      "role": "Automation Engineer",
+      "must_have_skills": ["selenium"],
+      "good_to_have_skills": ["apitesting"],
+      "min_must_have_match": 1
+    },
+
+    "bigquery_engineer": {
+      "role": "BigQuery Engineer",
+      "must_have_skills": ["bigquery"],
+      "good_to_have_skills": ["sql"],
+      "min_must_have_match": 1
+    },
+
+    "kafka_engineer": {
+      "role": "Kafka Engineer",
+      "must_have_skills": ["kafka"],
+      "good_to_have_skills": ["spark"],
+      "min_must_have_match": 1
+    },
+
+    "open_source_contributor": {
+      "role": "Open Source Contributor",
+      "must_have_skills": ["git"],
+      "good_to_have_skills": ["github"],
+      "min_must_have_match": 1
+    }
+
+  }
+}
