@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
 from services.firebase import db
 from models.user import UserCreate, UserLogin
-from models.token import create_access_token
+from models.token import create_access_token, verify_token
 
 
 router = APIRouter()
@@ -54,3 +54,20 @@ async def login(user: UserLogin):
     })
 
     return {"access_token": token, "role": user_doc["role"]}
+
+
+@router.get("/me")
+async def me(current_user: dict = Depends(verify_token)):
+    """Return the current user's public profile fields."""
+
+    user_doc_ref = db.collection("users").document(current_user["email"])
+    snap = user_doc_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_doc = snap.to_dict() or {}
+    return {
+        "email": user_doc.get("email") or current_user.get("email"),
+        "role": user_doc.get("role") or current_user.get("role"),
+        "name": user_doc.get("name") or "",
+    }

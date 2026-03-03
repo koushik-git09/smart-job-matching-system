@@ -37,6 +37,7 @@ import type {
   SkillRadarData,
 } from "@/app/types";
 import {
+  getCurrentUser,
   getJobSeekerDashboard,
   getRecommendedJobs,
   uploadResume,
@@ -49,6 +50,7 @@ interface JobSeekerDashboardProps {
 export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [userName, setUserName] = useState<string>("");
   const [dashboard, setDashboard] = useState<{
     readinessScore: number;
     matchedJobs: number;
@@ -79,6 +81,8 @@ export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
 
   const refreshDashboard = async () => {
     try {
+      const me = await getCurrentUser();
+      setUserName(me?.name ?? "");
       const data = await getJobSeekerDashboard();
       setDashboard(data);
       const rec = await getRecommendedJobs();
@@ -86,6 +90,7 @@ export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
     } catch {
       setDashboard(null);
       setRecommendedJobs([]);
+      setUserName("");
     }
   };
 
@@ -133,8 +138,8 @@ export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
             <div>
               <h1 className="text-2xl font-bold">Career Readiness Dashboard</h1>
               <p className="text-sm text-gray-600">
-                Welcome back! Track your progress and find your next
-                opportunity.
+                Welcome back{userName ? `, ${userName}` : ""}! Track your
+                progress and find your next opportunity.
               </p>
             </div>
             <Button variant="outline" onClick={onLogout}>
