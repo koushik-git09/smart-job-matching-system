@@ -43,6 +43,18 @@ export async function getJobSeekerDashboard() {
   return response.json();
 }
 
+export async function getCurrentUser(): Promise<{ name: string; email: string; role: string }> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}
+
 export async function getRecommendedJobs(): Promise<{ jobs: any[] }> {
   const token = getToken();
 

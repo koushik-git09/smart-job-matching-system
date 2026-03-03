@@ -35,6 +35,17 @@ async def upload_resume(
 
     user_ref = db.collection("users").document(user["email"])
 
+    # Prefer explicit career goal/target role on the user profile, otherwise use resume prediction.
+    user_profile_snap = user_ref.get()
+    user_doc = (user_profile_snap.to_dict() or {}) if user_profile_snap.exists else {}
+    target_role = (
+        user_doc.get("targetRole")
+        or user_doc.get("target_role")
+        or (user_doc.get("careerGoals") or {}).get("shortTerm")
+        or (user_doc.get("career_goals") or {}).get("shortTerm")
+        or role_pred.get("predicted_role")
+    )
+
     # Store per user (subcollection structure)
     user_ref.collection("resume").document("latest").set(
         {
@@ -53,7 +64,7 @@ async def upload_resume(
         d.setdefault("id", s.id)
         jobs.append(d)
 
-    dashboard = compute_dashboard(skills, jobs)
+    dashboard = compute_dashboard(skills, jobs, target_role=str(target_role).strip() if target_role else None)
 
     # Seed per-user learning progress docs for the recommended courses (course metadata stays in `courses`).
     for c in dashboard.get("courseRecommendations", []) or []:
@@ -77,10 +88,14 @@ async def upload_resume(
             }
         )
 
+    skills_fingerprint = "|".join(sorted({str(x).strip().lower() for x in skills if str(x).strip()}))
+
     user_ref.collection("dashboard").document("latest").set(
         {
             **dashboard,
             "predictedRole": role_pred.get("predicted_role"),
+            "targetRoleUsed": str(target_role).strip() if target_role else "",
+            "skillsFingerprint": skills_fingerprint,
             "updated_at": datetime.utcnow(),
         }
     )
