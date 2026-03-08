@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
 from services.firebase import db
@@ -53,7 +55,35 @@ async def login(user: UserLogin):
         "role": user_doc["role"]
     })
 
+    # Track login state in Firestore to enable recruiter-side filtering.
+    user_doc_ref.set(
+        {
+            "is_logged_in": True,
+            "last_login_at": datetime.utcnow(),
+        },
+        merge=True,
+    )
+
     return {"access_token": token, "role": user_doc["role"]}
+
+
+@router.post("/logout")
+async def logout(current_user: dict = Depends(verify_token)):
+    """Best-effort logout marker.
+
+    The client still clears its local token; this endpoint only updates
+    Firestore fields (used for recruiter filtering of 'logged in' jobseekers).
+    """
+
+    user_doc_ref = db.collection("users").document(current_user["email"])
+    user_doc_ref.set(
+        {
+            "is_logged_in": False,
+            "last_logout_at": datetime.utcnow(),
+        },
+        merge=True,
+    )
+    return {"message": "Logged out"}
 
 
 @router.get("/me")

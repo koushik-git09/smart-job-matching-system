@@ -53,6 +53,20 @@ export async function loginWithOptions(
 }
 
 export function logout() {
+  const token = localStorage.getItem("access_token");
+
+  // Best-effort server-side logout marker; ignore failures.
+  if (token) {
+    fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }).catch(() => {
+      // ignore
+    });
+  }
+
   localStorage.removeItem("access_token");
   localStorage.removeItem("user_role");
 }

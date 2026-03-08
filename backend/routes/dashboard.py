@@ -60,12 +60,20 @@ def seeker_dashboard(user: dict = Depends(require_role("jobseeker"))):
     stored_target = str(data.get("targetRoleUsed") or "").strip().lower()
     current_target = str(target_role or "").strip().lower()
 
+    # Ensure the dashboard reflects changes to the shared `jobs` collection.
+    # We avoid reading full job documents unless we actually need to recompute.
+    stored_jobs_count = int(data.get("jobsCountUsed") or 0)
+    current_jobs_count = 0
+    for _ in db.collection("jobs").select([]).stream():
+        current_jobs_count += 1
+
     needs_recompute = (
         (not snap.exists)
         or (not data.get("jobMatches"))
         or (not data.get("skillRadarData"))
         or (stored_fingerprint != current_fingerprint)
         or (stored_target != current_target)
+        or (stored_jobs_count != current_jobs_count)
     )
 
     if needs_recompute and (skills or target_role):
@@ -78,6 +86,7 @@ def seeker_dashboard(user: dict = Depends(require_role("jobseeker"))):
         computed = compute_dashboard([str(x) for x in skills], jobs, target_role=str(target_role).strip() if target_role else None)
         computed["targetRoleUsed"] = str(target_role).strip() if target_role else ""
         computed["skillsFingerprint"] = current_fingerprint
+        computed["jobsCountUsed"] = current_jobs_count
         computed["updated_at"] = datetime.utcnow()
         user_ref.collection("dashboard").document("latest").set(computed)
         data = computed

@@ -59,6 +59,11 @@ def recommended_jobs(user: dict = Depends(verify_token)):
         job = snap.to_dict() or {}
         job.setdefault("id", snap.id)
 
+        # Respect optional recruiter job lifecycle fields.
+        status = str(job.get("status") or "active").strip().lower()
+        if status in {"closed", "draft"}:
+            continue
+
         jd_skills = job.get("required_skills") or job.get("requiredSkills") or []
         scoring = score_job_fit([str(x).strip().lower() for x in skills_norm], jd_skills)
         score = int(scoring.get("match_score") or 0)

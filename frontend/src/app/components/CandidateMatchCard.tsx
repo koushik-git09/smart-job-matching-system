@@ -1,23 +1,29 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
 import { Progress } from '@/app/components/ui/progress';
 import { Checkbox } from '@/app/components/ui/checkbox';
-import { CheckCircle2, AlertCircle, Mail, Phone, Download } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import type { CandidateMatch } from '@/app/types';
+import { CandidateActionButtons } from '@/app/components/CandidateActionButtons';
 
 interface CandidateMatchCardProps {
   candidate: CandidateMatch;
   isSelected?: boolean;
   onToggleSelect?: () => void;
+  onToggleSaved?: () => void;
+  onDownloadResume?: () => void;
 }
 
-export function CandidateMatchCard({ candidate, isSelected, onToggleSelect }: CandidateMatchCardProps) {
+export function CandidateMatchCard({ candidate, isSelected, onToggleSelect, onToggleSaved, onDownloadResume }: CandidateMatchCardProps) {
   const getMatchColor = (percentage: number) => {
     if (percentage >= 80) return 'text-green-600 bg-green-100';
     if (percentage >= 60) return 'text-blue-600 bg-blue-100';
     return 'text-orange-600 bg-orange-100';
   };
+
+  const email = (candidate.email || candidate.candidateId || '').toString();
+  const canEmail = email.includes('@');
+  const canDownload = Boolean(onDownloadResume);
 
   return (
     <Card className={`hover:shadow-lg transition-shadow ${isSelected ? 'border-blue-500 border-2' : ''}`}>
@@ -107,18 +113,32 @@ export function CandidateMatchCard({ candidate, isSelected, onToggleSelect }: Ca
         )}
 
         {/* Actions */}
-        <div className="flex gap-3 pt-2">
-          <Button className="flex-1">
-            <Mail className="w-4 h-4 mr-2" />
-            Contact
-          </Button>
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Resume
-          </Button>
-          <Button variant="outline" size="icon">
-            <Phone className="w-4 h-4" />
-          </Button>
+        <div className="pt-2">
+          <CandidateActionButtons
+            saved={Boolean(candidate.saved)}
+            disableContact={!canEmail}
+            onContact={() => {
+              if (!canEmail) return;
+              const subject = encodeURIComponent(`Regarding ${candidate.jobTitle}`);
+              window.location.href = `mailto:${email}?subject=${subject}`;
+            }}
+            disableResumeData={!canDownload}
+            onResumeData={() => {
+              if (!onDownloadResume) return;
+              onDownloadResume();
+            }}
+            disableSave={!onToggleSaved}
+            onSave={() => {
+              if (!onToggleSaved) return;
+              onToggleSaved();
+            }}
+          />
+
+          {!canEmail ? (
+            <p className="mt-2 text-xs text-gray-500">
+              Contact info not available for this candidate.
+            </p>
+          ) : null}
         </div>
       </CardContent>
     </Card>

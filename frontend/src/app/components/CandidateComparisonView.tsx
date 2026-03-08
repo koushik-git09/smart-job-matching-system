@@ -4,17 +4,72 @@ import { Button } from '@/app/components/ui/button';
 import { Progress } from '@/app/components/ui/progress';
 import { X, CheckCircle2, AlertCircle, Trophy } from 'lucide-react';
 import type { CandidateMatch } from '@/app/types';
+import { CandidateActionButtons } from '@/app/components/CandidateActionButtons';
 
 interface CandidateComparisonViewProps {
   candidates: CandidateMatch[];
   onRemoveCandidate: (id: string) => void;
+  onDownloadResume?: (candidateId: string) => void;
+  onToggleSaved?: (candidateId: string) => void;
 }
 
-export function CandidateComparisonView({ candidates, onRemoveCandidate }: CandidateComparisonViewProps) {
+export function CandidateComparisonView({ candidates, onRemoveCandidate, onDownloadResume, onToggleSaved }: CandidateComparisonViewProps) {
   // Find the best candidate
   const bestCandidateId = candidates.reduce((best, current) => 
     current.matchPercentage > best.matchPercentage ? current : best
   , candidates[0]).candidateId;
+
+  const exportCsv = () => {
+    const rows = [
+      [
+        "candidateId",
+        "email",
+        "candidateName",
+        "jobTitle",
+        "matchPercentage",
+        "readinessScore",
+        "matchingSkillsCount",
+        "missingSkillsCount",
+        "saved",
+      ],
+      ...candidates.map((c) => [
+        c.candidateId,
+        (c.email || "").toString(),
+        c.candidateName,
+        c.jobTitle,
+        String(c.matchPercentage),
+        String(c.readinessScore),
+        String(c.strengthAreas?.length ?? 0),
+        String(c.missingSkills?.length ?? 0),
+        String(Boolean(c.saved)),
+      ]),
+    ];
+
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `candidate-comparison-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const scheduleInterviews = () => {
+    const emails = candidates
+      .map((c) => (c.email || c.candidateId || "").toString())
+      .filter((x) => x.includes("@"));
+    if (emails.length === 0) return;
+    const to = emails.join(",");
+    const subject = encodeURIComponent("Interview Invitation");
+    const body = encodeURIComponent("Hi,\n\nWe would like to schedule an interview. Please share your availability.\n\nThanks");
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -27,7 +82,7 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
       </div>
 
       {/* Comparison Grid */}
-      <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(candidates.length, 3)}, 1fr)` }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {candidates.map((candidate) => (
           <Card key={candidate.candidateId} className={candidate.candidateId === bestCandidateId ? 'border-green-500 border-2' : ''}>
             <CardHeader>
@@ -103,6 +158,40 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
                       +{candidate.missingSkills.length - 3} more
                     </Badge>
                   )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-2 border-t">
+                <div className="pt-4">
+                  <CandidateActionButtons
+                    saved={Boolean(candidate.saved)}
+                    onContact={() => {
+                      const email = (candidate.email || candidate.candidateId || '').toString();
+                      if (!email.includes('@')) return;
+                      const subject = encodeURIComponent(`Regarding ${candidate.jobTitle}`);
+                      window.location.href = `mailto:${email}?subject=${subject}`;
+                    }}
+                    disableContact={!((candidate.email || candidate.candidateId || '').toString().includes('@'))}
+                    onResumeData={
+                      onDownloadResume
+                        ? () => onDownloadResume(candidate.candidateId)
+                        : undefined
+                    }
+                    disableResumeData={!onDownloadResume}
+                    onSave={
+                      onToggleSaved
+                        ? () => onToggleSaved(candidate.candidateId)
+                        : undefined
+                    }
+                    disableSave={!onToggleSaved}
+                  />
+
+                  {!((candidate.email || candidate.candidateId || '').toString().includes('@')) ? (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Contact info not available for this candidate.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </CardContent>
@@ -188,11 +277,11 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
-        <Button className="flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Button className="w-full" onClick={scheduleInterviews}>
           Schedule Interviews with Selected
         </Button>
-        <Button variant="outline">
+        <Button variant="outline" className="w-full" onClick={exportCsv}>
           Export Comparison
         </Button>
       </div>
