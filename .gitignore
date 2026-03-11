@@ -21,3 +21,5 @@ ENV/
 backend/firebase-key.json
 .env
 backend/.env
+backend/.env.example
+backend/database
