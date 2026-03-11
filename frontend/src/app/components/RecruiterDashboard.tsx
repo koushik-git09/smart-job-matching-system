@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/app/components/ui/tabs";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { Progress } from "@/app/components/ui/progress";
@@ -44,7 +54,8 @@ import type {
 } from "@/app/types";
 import {
   createRecruiterJobPosting,
-  getCandidateResume,
+  contactCandidate,
+  getCandidateResumePdf,
   getRecruiterDashboard,
   setRecruiterJobStatus,
   toggleSavedCandidate,
@@ -134,7 +145,8 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
     }
     if (q) {
       list = list.filter((c) => {
-        const hay = `${c.candidateName} ${c.candidateId} ${c.jobTitle}`.toLowerCase();
+        const hay =
+          `${c.candidateName} ${c.candidateId} ${c.jobTitle}`.toLowerCase();
         return hay.includes(q);
       });
     }
@@ -212,20 +224,26 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
   const downloadCandidateResumeData = async (candidateId: string) => {
     setActionError(null);
     try {
-      const data = await getCandidateResume(candidateId);
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json;charset=utf-8",
-      });
+      const blob = await getCandidateResumePdf(candidateId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `candidate-${candidateId}-resume-analysis.json`;
+      a.download = `candidate-${candidateId}-resume-report.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e: any) {
-      setActionError(e?.message || "Failed to download resume data");
+      setActionError(e?.message || "Failed to download resume PDF");
+    }
+  };
+
+  const contactCandidateForInterview = async (candidateId: string) => {
+    setActionError(null);
+    try {
+      await contactCandidate(candidateId);
+    } catch (e: any) {
+      setActionError(e?.message || "Failed to contact candidate");
     }
   };
 
@@ -239,7 +257,9 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
           c.candidateId === candidateId ? { ...c, saved: res.saved } : c,
         );
         const nextSaved = res.saved
-          ? Array.from(new Set([...(prev.savedCandidateIds ?? []), res.candidateId]))
+          ? Array.from(
+              new Set([...(prev.savedCandidateIds ?? []), res.candidateId]),
+            )
           : (prev.savedCandidateIds ?? []).filter((x) => x !== res.candidateId);
         return {
           ...prev,
@@ -274,9 +294,7 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
 
     const csv = rows
       .map((r) =>
-        r
-          .map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`)
-          .join(","),
+        r.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(","),
       )
       .join("\n");
 
@@ -299,7 +317,8 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
             <div>
               <h1 className="text-2xl font-bold">Recruiter Dashboard</h1>
               <p className="text-sm text-gray-600">
-                {profile?.company ?? ""} {profile?.industry ? `• ${profile.industry}` : ""}
+                {profile?.company ?? ""}{" "}
+                {profile?.industry ? `• ${profile.industry}` : ""}
               </p>
             </div>
             <Button variant="outline" onClick={onLogout}>
@@ -353,7 +372,9 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">High Match (80%+)</p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    High Match (80%+)
+                  </p>
                   <p className="text-3xl font-bold text-green-600">
                     {loading ? "—" : metrics.highMatch}
                   </p>
@@ -378,7 +399,10 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                   <TrendingUp className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
-              <Progress value={loading ? 0 : metrics.averageMatch} className="mt-3" />
+              <Progress
+                value={loading ? 0 : metrics.averageMatch}
+                className="mt-3"
+              />
             </CardContent>
           </Card>
 
@@ -401,13 +425,22 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex w-full overflow-x-auto justify-start gap-2 mb-6">
-            <TabsTrigger value="overview" className="whitespace-nowrap min-w-[120px]">
+            <TabsTrigger
+              value="overview"
+              className="whitespace-nowrap min-w-[120px]"
+            >
               Overview
             </TabsTrigger>
-            <TabsTrigger value="candidates" className="whitespace-nowrap min-w-[120px]">
+            <TabsTrigger
+              value="candidates"
+              className="whitespace-nowrap min-w-[120px]"
+            >
               Candidates
             </TabsTrigger>
-            <TabsTrigger value="compare" className="whitespace-nowrap min-w-[140px]">
+            <TabsTrigger
+              value="compare"
+              className="whitespace-nowrap min-w-[140px]"
+            >
               Compare ({selectedCandidates.length})
             </TabsTrigger>
           </TabsList>
@@ -417,7 +450,10 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <CardTitle>Active Job Postings</CardTitle>
-                  <Button onClick={() => setPostDialogOpen(true)} disabled={loading}>
+                  <Button
+                    onClick={() => setPostDialogOpen(true)}
+                    disabled={loading}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     New Job Posting
                   </Button>
@@ -428,7 +464,8 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                   <div className="text-sm text-gray-600">Loading jobs…</div>
                 ) : jobs.length === 0 ? (
                   <div className="text-sm text-gray-600">
-                    No active job postings yet. Create your first job to start seeing candidate matches.
+                    No active job postings yet. Create your first job to start
+                    seeing candidate matches.
                   </div>
                 ) : (
                   jobs.map((job) => (
@@ -440,23 +477,40 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                             {job.location} • {job.type}
                           </p>
                         </div>
-                        {job.experienceLevel ? <Badge>{job.experienceLevel}</Badge> : null}
+                        {job.experienceLevel ? (
+                          <Badge>{job.experienceLevel}</Badge>
+                        ) : null}
                       </div>
 
-                      <p className="text-sm text-gray-700 mb-3">{job.description}</p>
+                      <p className="text-sm text-gray-700 mb-3">
+                        {job.description}
+                      </p>
 
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="outline">
-                            {job.requiredSkills.filter((s) => s.priority === "must-have").length} Must-have skills
+                            {
+                              job.requiredSkills.filter(
+                                (s) => s.priority === "must-have",
+                              ).length
+                            }{" "}
+                            Must-have skills
                           </Badge>
                           <Badge variant="outline">
-                            {job.requiredSkills.filter((s) => s.priority === "good-to-have").length} Good-to-have skills
+                            {
+                              job.requiredSkills.filter(
+                                (s) => s.priority === "good-to-have",
+                              ).length
+                            }{" "}
+                            Good-to-have skills
                           </Badge>
                         </div>
 
                         <div className="flex gap-2 justify-end">
-                          <Button variant="outline" onClick={() => setJobDetails(job)}>
+                          <Button
+                            variant="outline"
+                            onClick={() => setJobDetails(job)}
+                          >
                             View Details
                           </Button>
                           <Button
@@ -469,7 +523,9 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                                 await setRecruiterJobStatus(job.id, "closed");
                                 await refresh();
                               } catch (e: any) {
-                                setActionError(e?.message || "Failed to close job");
+                                setActionError(
+                                  e?.message || "Failed to close job",
+                                );
                               } finally {
                                 setJobActionId(null);
                               }
@@ -485,12 +541,19 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
               </CardContent>
             </Card>
 
-            <Dialog open={Boolean(jobDetails)} onOpenChange={(o) => !o && setJobDetails(null)}>
+            <Dialog
+              open={Boolean(jobDetails)}
+              onOpenChange={(o) => !o && setJobDetails(null)}
+            >
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>{jobDetails?.title ?? "Job Details"}</DialogTitle>
+                  <DialogTitle>
+                    {jobDetails?.title ?? "Job Details"}
+                  </DialogTitle>
                   <DialogDescription>
-                    {(profile?.company ?? "").toString()} {jobDetails?.location ? `• ${jobDetails.location}` : ""} {jobDetails?.type ? `• ${jobDetails.type}` : ""}
+                    {(profile?.company ?? "").toString()}{" "}
+                    {jobDetails?.location ? `• ${jobDetails.location}` : ""}{" "}
+                    {jobDetails?.type ? `• ${jobDetails.type}` : ""}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -499,7 +562,9 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                     {jobDetails?.description ?? ""}
                   </div>
                   <div>
-                    <div className="text-sm font-medium mb-2">Required Skills</div>
+                    <div className="text-sm font-medium mb-2">
+                      Required Skills
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {(jobDetails?.requiredSkills ?? []).map((s, idx) => (
                         <Badge key={`${s.name}-${idx}`} variant="secondary">
@@ -523,18 +588,23 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                 <DialogHeader>
                   <DialogTitle>Post a New Job</DialogTitle>
                   <DialogDescription>
-                    This creates a document in Firestore `jobs` and associates it with your recruiter account.
+                    This creates a document in Firestore `jobs` and associates
+                    it with your recruiter account.
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
-                  {postError ? <div className="text-sm text-red-600">{postError}</div> : null}
+                  {postError ? (
+                    <div className="text-sm text-red-600">{postError}</div>
+                  ) : null}
 
                   <div className="space-y-2">
                     <Label>Job Title</Label>
                     <Input
                       value={newJob.title}
-                      onChange={(e) => setNewJob((p) => ({ ...p, title: e.target.value }))}
+                      onChange={(e) =>
+                        setNewJob((p) => ({ ...p, title: e.target.value }))
+                      }
                       placeholder="e.g., Frontend Developer Intern"
                     />
                   </div>
@@ -543,7 +613,9 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                     <Label>Company</Label>
                     <Input
                       value={newJob.company}
-                      onChange={(e) => setNewJob((p) => ({ ...p, company: e.target.value }))}
+                      onChange={(e) =>
+                        setNewJob((p) => ({ ...p, company: e.target.value }))
+                      }
                       placeholder="e.g., TechNova"
                     />
                   </div>
@@ -553,7 +625,9 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                       <Label>Location</Label>
                       <Input
                         value={newJob.location}
-                        onChange={(e) => setNewJob((p) => ({ ...p, location: e.target.value }))}
+                        onChange={(e) =>
+                          setNewJob((p) => ({ ...p, location: e.target.value }))
+                        }
                         placeholder="e.g., Chennai"
                       />
                     </div>
@@ -561,7 +635,9 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                       <Label>Job Type</Label>
                       <Input
                         value={newJob.type}
-                        onChange={(e) => setNewJob((p) => ({ ...p, type: e.target.value }))}
+                        onChange={(e) =>
+                          setNewJob((p) => ({ ...p, type: e.target.value }))
+                        }
                         placeholder="e.g., Internship"
                       />
                     </div>
@@ -571,7 +647,12 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                     <Label>Description</Label>
                     <Textarea
                       value={newJob.description}
-                      onChange={(e) => setNewJob((p) => ({ ...p, description: e.target.value }))}
+                      onChange={(e) =>
+                        setNewJob((p) => ({
+                          ...p,
+                          description: e.target.value,
+                        }))
+                      }
                       placeholder="Brief role description"
                       rows={4}
                     />
@@ -581,7 +662,12 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                     <Label>External Apply Link</Label>
                     <Input
                       value={newJob.external_apply_link}
-                      onChange={(e) => setNewJob((p) => ({ ...p, external_apply_link: e.target.value }))}
+                      onChange={(e) =>
+                        setNewJob((p) => ({
+                          ...p,
+                          external_apply_link: e.target.value,
+                        }))
+                      }
                       placeholder="https://..."
                     />
                   </div>
@@ -600,7 +686,11 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                           }
                         }}
                       />
-                      <Button type="button" variant="outline" onClick={addSkill}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addSkill}
+                      >
                         Add
                       </Button>
                     </div>
@@ -626,10 +716,19 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                 </div>
 
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setPostDialogOpen(false)} disabled={posting}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setPostDialogOpen(false)}
+                    disabled={posting}
+                  >
                     Cancel
                   </Button>
-                  <Button type="button" onClick={submitNewJob} disabled={posting}>
+                  <Button
+                    type="button"
+                    onClick={submitNewJob}
+                    disabled={posting}
+                  >
                     {posting ? "Posting…" : "Post Job"}
                   </Button>
                 </DialogFooter>
@@ -643,10 +742,13 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
               <CardContent>
                 <div className="space-y-3">
                   {loading ? (
-                    <div className="text-sm text-gray-600">Loading candidates…</div>
+                    <div className="text-sm text-gray-600">
+                      Loading candidates…
+                    </div>
                   ) : candidates.length === 0 ? (
                     <div className="text-sm text-gray-600">
-                      No candidates found yet. Candidates appear once jobseekers upload resumes.
+                      No candidates found yet. Candidates appear once jobseekers
+                      upload resumes.
                     </div>
                   ) : (
                     candidates.slice(0, 3).map((candidate) => (
@@ -656,17 +758,36 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <h4 className="font-semibold">{candidate.candidateName}</h4>
-                            <p className="text-sm text-gray-600">Applied for: {candidate.jobTitle}</p>
+                            <h4 className="font-semibold">
+                              {candidate.candidateName}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              Applied for: {candidate.jobTitle}
+                            </p>
                           </div>
-                          <Badge variant={candidate.matchPercentage >= 80 ? "default" : "secondary"}>
+                          <Badge
+                            variant={
+                              candidate.matchPercentage >= 80
+                                ? "default"
+                                : "secondary"
+                            }
+                          >
                             {candidate.matchPercentage}% Match
                           </Badge>
                         </div>
-                        <Progress value={candidate.matchPercentage} className="mb-2" />
+                        <Progress
+                          value={candidate.matchPercentage}
+                          className="mb-2"
+                        />
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Readiness: {candidate.readinessScore}%</span>
-                          <Button variant="link" size="sm" onClick={() => setActiveTab("candidates")}>
+                          <span className="text-gray-600">
+                            Readiness: {candidate.readinessScore}%
+                          </span>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => setActiveTab("candidates")}
+                          >
                             View Full Profile
                           </Button>
                         </div>
@@ -740,7 +861,9 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
 
             {loading ? (
               <Card>
-                <CardContent className="p-6 text-sm text-gray-600">Loading candidates…</CardContent>
+                <CardContent className="p-6 text-sm text-gray-600">
+                  Loading candidates…
+                </CardContent>
               </Card>
             ) : filteredCandidates.length === 0 ? (
               <Card>
@@ -753,10 +876,21 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
                 <CandidateMatchCard
                   key={candidate.candidateId}
                   candidate={candidate}
-                  isSelected={selectedCandidates.includes(candidate.candidateId)}
-                  onToggleSelect={() => toggleCandidateSelection(candidate.candidateId)}
-                  onToggleSaved={() => handleToggleSavedCandidate(candidate.candidateId)}
-                  onDownloadResume={() => downloadCandidateResumeData(candidate.candidateId)}
+                  isSelected={selectedCandidates.includes(
+                    candidate.candidateId,
+                  )}
+                  onToggleSelect={() =>
+                    toggleCandidateSelection(candidate.candidateId)
+                  }
+                  onToggleSaved={() =>
+                    handleToggleSavedCandidate(candidate.candidateId)
+                  }
+                  onContact={() =>
+                    contactCandidateForInterview(candidate.candidateId)
+                  }
+                  onDownloadResume={() =>
+                    downloadCandidateResumeData(candidate.candidateId)
+                  }
                 />
               ))
             )}
@@ -767,29 +901,42 @@ export function RecruiterDashboard({ onLogout }: RecruiterDashboardProps) {
               <Card>
                 <CardContent className="p-12 text-center">
                   <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-xl font-semibold mb-2">No Candidates Selected</h3>
+                  <h3 className="text-xl font-semibold mb-2">
+                    No Candidates Selected
+                  </h3>
                   <p className="text-gray-600 mb-6">
-                    Select 2 or more candidates from the Candidates tab to compare them side-by-side.
+                    Select 2 or more candidates from the Candidates tab to
+                    compare them side-by-side.
                   </p>
-                  <Button onClick={() => setActiveTab("candidates")}>Go to Candidates</Button>
+                  <Button onClick={() => setActiveTab("candidates")}>
+                    Go to Candidates
+                  </Button>
                 </CardContent>
               </Card>
             ) : selectedCandidates.length === 1 ? (
               <Card>
                 <CardContent className="p-12 text-center">
                   <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-xl font-semibold mb-2">Select More Candidates</h3>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Select More Candidates
+                  </h3>
                   <p className="text-gray-600 mb-6">
-                    You&apos;ve selected 1 candidate. Select at least one more to compare.
+                    You&apos;ve selected 1 candidate. Select at least one more
+                    to compare.
                   </p>
-                  <Button onClick={() => setActiveTab("candidates")}>Select More Candidates</Button>
+                  <Button onClick={() => setActiveTab("candidates")}>
+                    Select More Candidates
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
               <CandidateComparisonView
-                candidates={candidates.filter((c) => selectedCandidates.includes(c.candidateId))}
+                candidates={candidates.filter((c) =>
+                  selectedCandidates.includes(c.candidateId),
+                )}
                 onRemoveCandidate={toggleCandidateSelection}
                 onDownloadResume={downloadCandidateResumeData}
+                onContactCandidate={contactCandidateForInterview}
                 onToggleSaved={handleToggleSavedCandidate}
               />
             )}

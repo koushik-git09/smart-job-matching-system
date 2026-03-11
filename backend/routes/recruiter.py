@@ -4,14 +4,20 @@ from datetime import datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from models.token import require_role
 from services.dashboard_compute import compute_job_match
 from services.match_scoring import score_job_fit
 from services.firebase import db
 from services.catalog import cache
+from services.email_service import compose_interview_invitation, send_email, EmailSendError
 
 router = APIRouter()
+
+
+class ContactCandidateRequest(BaseModel):
+    candidate_id: str
 
 
 def _norm_text(x: object) -> str:
@@ -570,3 +576,50 @@ def set_job_status(job_id: str, payload: dict, user: dict = Depends(require_role
     db.collection("jobs").document(jid).set({"status": status, "updated_at": datetime.utcnow()}, merge=True)
 
     return {"jobId": jid, "status": status}
+
+
+@router.post("/contact-candidate")
+def contact_candidate(payload: ContactCandidateRequest, user: dict = Depends(require_role("recruiter"))):
+    cid_raw = str(payload.candidate_id or "").strip()
+    cid = cid_raw
+    if not cid:
+        raise HTTPException(status_code=400, detail="candidate_id is required")
+
+    # Recruiter identity (company name is used in the email subject).
+    recruiter_snap = db.collection("users").document(user["email"]).get()
+    recruiter_doc = (recruiter_snap.to_dict() or {}) if recruiter_snap.exists else {}
+    company_name = str(recruiter_doc.get("company") or "Company").strip() or "Company"
+
+    # Candidate data.
+    candidate_snap = db.collection("users").document(cid).get()
+    if not candidate_snap.exists and cid_raw.lower() != cid_raw:
+        # Some callers normalize emails; try lowercase as a fallback.
+        cid = cid_raw.lower()
+        candidate_snap = db.collection("users").document(cid).get()
+    if not candidate_snap.exists:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    candidate_doc = candidate_snap.to_dict() or {}
+
+    candidate_email = str(candidate_doc.get("email") or cid).strip()
+    candidate_name = str(candidate_doc.get("name") or candidate_doc.get("fullName") or candidate_email).strip()
+    if not candidate_email or "@" not in candidate_email:
+        raise HTTPException(status_code=400, detail="Candidate email not available")
+
+    subject, body = compose_interview_invitation(candidate_name=candidate_name, company_name=company_name)
+
+    try:
+        send_email(
+            to_email=candidate_email,
+            subject=subject,
+            body=body,
+            reply_to=str(user.get("email") or "").strip() or None,
+        )
+    except EmailSendError as e:
+        msg = str(e)
+        # Not configured vs delivery failure.
+        low = msg.lower()
+        if "not configured" in low or "set email_user" in low or "email_user/email_pass" in low:
+            raise HTTPException(status_code=503, detail=msg)
+        raise HTTPException(status_code=502, detail=msg)
+
+    return {"message": "Email sent"}
