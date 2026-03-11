@@ -7,7 +7,6 @@ passlib[bcrypt]
 python-dotenv
 email-validator
 pdfplumber
-reportlab
 sentence-transformers
 scikit-learn
 numpy
