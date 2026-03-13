@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import auth
@@ -20,7 +22,12 @@ app.include_router(recruiter.router, prefix="/recruiter", tags=["Recruiter"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        o.strip()
+        for o in os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173").split(",")
+        if o.strip()
+    ],
+    allow_origin_regex=os.getenv("CORS_ALLOW_ORIGIN_REGEX") or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

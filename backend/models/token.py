@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends
+import os
 
 
-SECRET_KEY = "supersecretkey"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -24,10 +25,10 @@ def create_access_token(data: dict):
 def verify_token(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("email")
-        role: str = payload.get("role")
+        email = payload.get("email")
+        role = payload.get("role")
 
-        if email is None or role is None:
+        if not isinstance(email, str) or not isinstance(role, str):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",
