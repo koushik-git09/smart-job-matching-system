@@ -1,20 +1,93 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { Progress } from '@/app/components/ui/progress';
-import { X, CheckCircle2, AlertCircle, Trophy } from 'lucide-react';
-import type { CandidateMatch } from '@/app/types';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { Progress } from "@/app/components/ui/progress";
+import { X, CheckCircle2, AlertCircle, Trophy } from "lucide-react";
+import type { CandidateMatch } from "@/app/types";
+import { CandidateActionButtons } from "@/app/components/CandidateActionButtons";
 
 interface CandidateComparisonViewProps {
   candidates: CandidateMatch[];
   onRemoveCandidate: (id: string) => void;
+  onDownloadResume?: (candidateId: string) => void;
+  onToggleSaved?: (candidateId: string) => void;
+  onContactCandidate?: (candidateId: string) => void;
 }
 
-export function CandidateComparisonView({ candidates, onRemoveCandidate }: CandidateComparisonViewProps) {
+export function CandidateComparisonView({
+  candidates,
+  onRemoveCandidate,
+  onDownloadResume,
+  onToggleSaved,
+  onContactCandidate,
+}: CandidateComparisonViewProps) {
   // Find the best candidate
-  const bestCandidateId = candidates.reduce((best, current) => 
-    current.matchPercentage > best.matchPercentage ? current : best
-  , candidates[0]).candidateId;
+  const bestCandidateId = candidates.reduce(
+    (best, current) =>
+      current.matchPercentage > best.matchPercentage ? current : best,
+    candidates[0],
+  ).candidateId;
+
+  const exportCsv = () => {
+    const rows = [
+      [
+        "candidateId",
+        "email",
+        "candidateName",
+        "jobTitle",
+        "matchPercentage",
+        "readinessScore",
+        "matchingSkillsCount",
+        "missingSkillsCount",
+        "saved",
+      ],
+      ...candidates.map((c) => [
+        c.candidateId,
+        (c.email || "").toString(),
+        c.candidateName,
+        c.jobTitle,
+        String(c.matchPercentage),
+        String(c.readinessScore),
+        String(c.strengthAreas?.length ?? 0),
+        String(c.missingSkills?.length ?? 0),
+        String(Boolean(c.saved)),
+      ]),
+    ];
+
+    const csv = rows
+      .map((r) =>
+        r.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `candidate-comparison-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const scheduleInterviews = () => {
+    const emails = candidates
+      .map((c) => (c.email || c.candidateId || "").toString())
+      .filter((x) => x.includes("@"));
+    if (emails.length === 0) return;
+    const to = emails.join(",");
+    const subject = encodeURIComponent("Interview Invitation");
+    const body = encodeURIComponent(
+      "Hi,\n\nWe would like to schedule an interview. Please share your availability.\n\nThanks",
+    );
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -22,14 +95,23 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Candidate Comparison</h2>
-          <p className="text-gray-600">Compare {candidates.length} candidates side-by-side</p>
+          <p className="text-gray-600">
+            Compare {candidates.length} candidates side-by-side
+          </p>
         </div>
       </div>
 
       {/* Comparison Grid */}
-      <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(candidates.length, 3)}, 1fr)` }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {candidates.map((candidate) => (
-          <Card key={candidate.candidateId} className={candidate.candidateId === bestCandidateId ? 'border-green-500 border-2' : ''}>
+          <Card
+            key={candidate.candidateId}
+            className={
+              candidate.candidateId === bestCandidateId
+                ? "border-green-500 border-2"
+                : ""
+            }
+          >
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
@@ -57,7 +139,9 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium">Match Score</span>
-                  <span className="text-lg font-bold text-blue-600">{candidate.matchPercentage}%</span>
+                  <span className="text-lg font-bold text-blue-600">
+                    {candidate.matchPercentage}%
+                  </span>
                 </div>
                 <Progress value={candidate.matchPercentage} />
               </div>
@@ -66,7 +150,9 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium">Readiness</span>
-                  <span className="text-lg font-bold text-purple-600">{candidate.readinessScore}%</span>
+                  <span className="text-lg font-bold text-purple-600">
+                    {candidate.readinessScore}%
+                  </span>
                 </div>
                 <Progress value={candidate.readinessScore} />
               </div>
@@ -105,6 +191,59 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
                   )}
                 </div>
               </div>
+
+              {/* Actions */}
+              <div className="pt-2 border-t">
+                <div className="pt-4">
+                  <CandidateActionButtons
+                    saved={Boolean(candidate.saved)}
+                    onContact={
+                      onContactCandidate
+                        ? () => onContactCandidate(candidate.candidateId)
+                        : () => {
+                            const email = (
+                              candidate.email ||
+                              candidate.candidateId ||
+                              ""
+                            ).toString();
+                            if (!email.includes("@")) return;
+                            const subject = encodeURIComponent(
+                              `Regarding ${candidate.jobTitle}`,
+                            );
+                            window.location.href = `mailto:${email}?subject=${subject}`;
+                          }
+                    }
+                    disableContact={Boolean(
+                      onContactCandidate
+                        ? false
+                        : !(candidate.email || candidate.candidateId || "")
+                            .toString()
+                            .includes("@"),
+                    )}
+                    onResumeData={
+                      onDownloadResume
+                        ? () => onDownloadResume(candidate.candidateId)
+                        : undefined
+                    }
+                    disableResumeData={!onDownloadResume}
+                    onSave={
+                      onToggleSaved
+                        ? () => onToggleSaved(candidate.candidateId)
+                        : undefined
+                    }
+                    disableSave={!onToggleSaved}
+                  />
+
+                  {!onContactCandidate &&
+                  !(candidate.email || candidate.candidateId || "")
+                    .toString()
+                    .includes("@") ? (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Contact info not available for this candidate.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -122,7 +261,10 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
                 <tr className="border-b">
                   <th className="text-left p-3 font-medium">Metric</th>
                   {candidates.map((candidate) => (
-                    <th key={candidate.candidateId} className="text-left p-3 font-medium">
+                    <th
+                      key={candidate.candidateId}
+                      className="text-left p-3 font-medium"
+                    >
                       {candidate.candidateName}
                     </th>
                   ))}
@@ -134,8 +276,13 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
                   {candidates.map((candidate) => (
                     <td key={candidate.candidateId} className="p-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold">{candidate.matchPercentage}%</span>
-                        <Progress value={candidate.matchPercentage} className="w-20" />
+                        <span className="font-semibold">
+                          {candidate.matchPercentage}%
+                        </span>
+                        <Progress
+                          value={candidate.matchPercentage}
+                          className="w-20"
+                        />
                       </div>
                     </td>
                   ))}
@@ -145,8 +292,13 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
                   {candidates.map((candidate) => (
                     <td key={candidate.candidateId} className="p-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold">{candidate.readinessScore}%</span>
-                        <Progress value={candidate.readinessScore} className="w-20" />
+                        <span className="font-semibold">
+                          {candidate.readinessScore}%
+                        </span>
+                        <Progress
+                          value={candidate.readinessScore}
+                          className="w-20"
+                        />
                       </div>
                     </td>
                   ))}
@@ -155,7 +307,9 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
                   <td className="p-3 text-sm font-medium">Matching Skills</td>
                   {candidates.map((candidate) => (
                     <td key={candidate.candidateId} className="p-3">
-                      <Badge variant="secondary">{candidate.strengthAreas.length}</Badge>
+                      <Badge variant="secondary">
+                        {candidate.strengthAreas.length}
+                      </Badge>
                     </td>
                   ))}
                 </tr>
@@ -163,7 +317,9 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
                   <td className="p-3 text-sm font-medium">Missing Skills</td>
                   {candidates.map((candidate) => (
                     <td key={candidate.candidateId} className="p-3">
-                      <Badge variant="outline">{candidate.missingSkills.length}</Badge>
+                      <Badge variant="outline">
+                        {candidate.missingSkills.length}
+                      </Badge>
                     </td>
                   ))}
                 </tr>
@@ -172,7 +328,9 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
                   {candidates.map((candidate) => (
                     <td key={candidate.candidateId} className="p-3">
                       {candidate.readinessScore >= 85 ? (
-                        <Badge className="bg-green-600">Highly Recommended</Badge>
+                        <Badge className="bg-green-600">
+                          Highly Recommended
+                        </Badge>
                       ) : candidate.readinessScore >= 70 ? (
                         <Badge className="bg-blue-600">Good Candidate</Badge>
                       ) : (
@@ -188,11 +346,11 @@ export function CandidateComparisonView({ candidates, onRemoveCandidate }: Candi
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
-        <Button className="flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Button className="w-full" onClick={scheduleInterviews}>
           Schedule Interviews with Selected
         </Button>
-        <Button variant="outline">
+        <Button variant="outline" className="w-full" onClick={exportCsv}>
           Export Comparison
         </Button>
       </div>

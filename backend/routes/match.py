@@ -1,23 +1,14 @@
 from fastapi import APIRouter, Depends
+
+from models.token import verify_token
 from services.firebase import db
 from services.semantic_matching import calculate_semantic_match
-from jose import jwt
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 router = APIRouter()
-security = HTTPBearer()
-
-SECRET_KEY = "supersecretkey"
-ALGORITHM = "HS256"
-
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-    return payload
 
 
 @router.get("/job/{job_id}")
-def match_job(job_id: str, user=Depends(get_current_user)):
+def match_job(job_id: str, user: dict = Depends(verify_token)):
 
     # Get user resume
     resume_doc = db.collection("users") \
@@ -29,7 +20,8 @@ def match_job(job_id: str, user=Depends(get_current_user)):
     if not resume_doc.exists:
         return {"error": "Resume not uploaded"}
 
-    user_skills = resume_doc.to_dict().get("extracted_skills", [])
+    resume_data = resume_doc.to_dict() or {}
+    user_skills = resume_data.get("extracted_skills_norm") or resume_data.get("extracted_skills") or []
 
     # Get job
     job_doc = db.collection("jobs").document(job_id).get()
@@ -38,7 +30,7 @@ def match_job(job_id: str, user=Depends(get_current_user)):
         return {"error": "Job not found"}
 
     job_data = job_doc.to_dict()
-    required_skills = job_data.get("required_skills", [])
+    required_skills = job_data.get("required_skills") or job_data.get("requiredSkills") or []
 
     result = calculate_semantic_match(user_skills, required_skills)
 

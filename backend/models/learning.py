@@ -10,8 +10,8 @@ CourseStatus = Literal["not-started", "in-progress", "completed"]
 
 
 class CourseProgressUpsert(BaseModel):
-    courseTitle: str
-    platform: str
+    courseTitle: Optional[str] = None
+    platform: Optional[str] = None
     skillsImproved: list[str] = Field(default_factory=list)
 
     status: CourseStatus = "not-started"

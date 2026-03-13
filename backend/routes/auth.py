@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
 from services.firebase import db
 from models.user import UserCreate, UserLogin
-from models.token import create_access_token
+from models.token import create_access_token, verify_token
 
 
 router = APIRouter()
@@ -53,4 +55,49 @@ async def login(user: UserLogin):
         "role": user_doc["role"]
     })
 
+    # Track login state in Firestore to enable recruiter-side filtering.
+    user_doc_ref.set(
+        {
+            "is_logged_in": True,
+            "last_login_at": datetime.utcnow(),
+        },
+        merge=True,
+    )
+
     return {"access_token": token, "role": user_doc["role"]}
+
+
+@router.post("/logout")
+async def logout(current_user: dict = Depends(verify_token)):
+    """Best-effort logout marker.
+
+    The client still clears its local token; this endpoint only updates
+    Firestore fields (used for recruiter filtering of 'logged in' jobseekers).
+    """
+
+    user_doc_ref = db.collection("users").document(current_user["email"])
+    user_doc_ref.set(
+        {
+            "is_logged_in": False,
+            "last_logout_at": datetime.utcnow(),
+        },
+        merge=True,
+    )
+    return {"message": "Logged out"}
+
+
+@router.get("/me")
+async def me(current_user: dict = Depends(verify_token)):
+    """Return the current user's public profile fields."""
+
+    user_doc_ref = db.collection("users").document(current_user["email"])
+    snap = user_doc_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_doc = snap.to_dict() or {}
+    return {
+        "email": user_doc.get("email") or current_user.get("email"),
+        "role": user_doc.get("role") or current_user.get("role"),
+        "name": user_doc.get("name") or "",
+    }

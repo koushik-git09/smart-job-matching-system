@@ -1,26 +1,47 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { Progress } from '@/app/components/ui/progress';
-import { Checkbox } from '@/app/components/ui/checkbox';
-import { CheckCircle2, AlertCircle, Mail, Phone, Download } from 'lucide-react';
-import type { CandidateMatch } from '@/app/types';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Badge } from "@/app/components/ui/badge";
+import { Progress } from "@/app/components/ui/progress";
+import { Checkbox } from "@/app/components/ui/checkbox";
+import { CheckCircle2, AlertCircle } from "lucide-react";
+import type { CandidateMatch } from "@/app/types";
+import { CandidateActionButtons } from "@/app/components/CandidateActionButtons";
 
 interface CandidateMatchCardProps {
   candidate: CandidateMatch;
   isSelected?: boolean;
   onToggleSelect?: () => void;
+  onToggleSaved?: () => void;
+  onContact?: () => void;
+  onDownloadResume?: () => void;
 }
 
-export function CandidateMatchCard({ candidate, isSelected, onToggleSelect }: CandidateMatchCardProps) {
+export function CandidateMatchCard({
+  candidate,
+  isSelected,
+  onToggleSelect,
+  onToggleSaved,
+  onContact,
+  onDownloadResume,
+}: CandidateMatchCardProps) {
   const getMatchColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-green-600 bg-green-100';
-    if (percentage >= 60) return 'text-blue-600 bg-blue-100';
-    return 'text-orange-600 bg-orange-100';
+    if (percentage >= 80) return "text-green-600 bg-green-100";
+    if (percentage >= 60) return "text-blue-600 bg-blue-100";
+    return "text-orange-600 bg-orange-100";
   };
 
+  const email = (candidate.email || candidate.candidateId || "").toString();
+  const canEmail = email.includes("@");
+  const canDownload = Boolean(onDownloadResume);
+
   return (
-    <Card className={`hover:shadow-lg transition-shadow ${isSelected ? 'border-blue-500 border-2' : ''}`}>
+    <Card
+      className={`hover:shadow-lg transition-shadow ${isSelected ? "border-blue-500 border-2" : ""}`}
+    >
       <CardHeader>
         <div className="flex items-start gap-4">
           {onToggleSelect && (
@@ -33,8 +54,12 @@ export function CandidateMatchCard({ candidate, isSelected, onToggleSelect }: Ca
           <div className="flex-1">
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle className="text-xl">{candidate.candidateName}</CardTitle>
-                <p className="text-gray-600 mt-1">Applied for: {candidate.jobTitle}</p>
+                <CardTitle className="text-xl">
+                  {candidate.candidateName}
+                </CardTitle>
+                <p className="text-gray-600 mt-1">
+                  Applied for: {candidate.jobTitle}
+                </p>
               </div>
               <Badge className={getMatchColor(candidate.matchPercentage)}>
                 {candidate.matchPercentage}% Match
@@ -48,7 +73,9 @@ export function CandidateMatchCard({ candidate, isSelected, onToggleSelect }: Ca
         <div>
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium">Skill Match</span>
-            <span className="text-sm text-gray-600">{candidate.matchPercentage}%</span>
+            <span className="text-sm text-gray-600">
+              {candidate.matchPercentage}%
+            </span>
           </div>
           <Progress value={candidate.matchPercentage} />
         </div>
@@ -57,20 +84,29 @@ export function CandidateMatchCard({ candidate, isSelected, onToggleSelect }: Ca
         <div>
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium">Job Readiness Score</span>
-            <span className="text-sm text-gray-600">{candidate.readinessScore}%</span>
+            <span className="text-sm text-gray-600">
+              {candidate.readinessScore}%
+            </span>
           </div>
           <Progress value={candidate.readinessScore} />
         </div>
 
         {/* Recommendation */}
-        <div className={`p-3 rounded-lg ${
-          candidate.readinessScore >= 85 ? 'bg-green-50' :
-          candidate.readinessScore >= 70 ? 'bg-blue-50' : 'bg-orange-50'
-        }`}>
+        <div
+          className={`p-3 rounded-lg ${
+            candidate.readinessScore >= 85
+              ? "bg-green-50"
+              : candidate.readinessScore >= 70
+                ? "bg-blue-50"
+                : "bg-orange-50"
+          }`}
+        >
           <p className="text-sm font-medium">
-            {candidate.readinessScore >= 85 ? '✅ Highly recommended - Ready to start immediately' :
-             candidate.readinessScore >= 70 ? '👍 Good candidate - May need brief onboarding' :
-             '⚠️ Skills need development - Consider for junior roles'}
+            {candidate.readinessScore >= 85
+              ? "✅ Highly recommended - Ready to start immediately"
+              : candidate.readinessScore >= 70
+                ? "👍 Good candidate - May need brief onboarding"
+                : "⚠️ Skills need development - Consider for junior roles"}
           </p>
         </div>
 
@@ -107,18 +143,38 @@ export function CandidateMatchCard({ candidate, isSelected, onToggleSelect }: Ca
         )}
 
         {/* Actions */}
-        <div className="flex gap-3 pt-2">
-          <Button className="flex-1">
-            <Mail className="w-4 h-4 mr-2" />
-            Contact
-          </Button>
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Resume
-          </Button>
-          <Button variant="outline" size="icon">
-            <Phone className="w-4 h-4" />
-          </Button>
+        <div className="pt-2">
+          <CandidateActionButtons
+            saved={Boolean(candidate.saved)}
+            disableContact={Boolean(onContact ? false : !canEmail)}
+            onContact={
+              onContact
+                ? onContact
+                : () => {
+                    if (!canEmail) return;
+                    const subject = encodeURIComponent(
+                      `Regarding ${candidate.jobTitle}`,
+                    );
+                    window.location.href = `mailto:${email}?subject=${subject}`;
+                  }
+            }
+            disableResumeData={!canDownload}
+            onResumeData={() => {
+              if (!onDownloadResume) return;
+              onDownloadResume();
+            }}
+            disableSave={!onToggleSaved}
+            onSave={() => {
+              if (!onToggleSaved) return;
+              onToggleSaved();
+            }}
+          />
+
+          {!onContact && !canEmail ? (
+            <p className="mt-2 text-xs text-gray-500">
+              Contact info not available for this candidate.
+            </p>
+          ) : null}
         </div>
       </CardContent>
     </Card>

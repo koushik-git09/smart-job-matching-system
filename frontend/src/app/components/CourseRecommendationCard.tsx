@@ -6,13 +6,7 @@ import {
 } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
-import {
-  Star,
-  Clock,
-  TrendingUp,
-  ExternalLink,
-  BookmarkPlus,
-} from "lucide-react";
+import { Star, Clock, TrendingUp, ExternalLink } from "lucide-react";
 import type { CourseRecommendation } from "@/app/types";
 
 interface CourseRecommendationCardProps {
@@ -80,9 +74,6 @@ export function CourseRecommendationCard({
           >
             <ExternalLink className="w-4 h-4 mr-2" />
             Enroll Now
-          </Button>
-          <Button variant="outline" size="icon">
-            <BookmarkPlus className="w-4 h-4" />
           </Button>
         </div>
       </CardContent>

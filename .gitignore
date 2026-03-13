@@ -19,3 +19,9 @@ ENV/
 
 # Secrets (do not commit)
 backend/firebase-key.json
+.env
+backend/.env
+backend/.env.example
+
+# Backend local/seed data (do not commit)
+backend/database/

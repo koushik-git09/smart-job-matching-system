@@ -3,6 +3,9 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from services.semantic_matching import calculate_semantic_match
+from services.catalog import cache, list_courses_for_skill
+
 
 def _skill_name(x: Any) -> str:
     if isinstance(x, str):
@@ -19,6 +22,65 @@ def _norm_skill(x: Any) -> str:
     return _skill_name(x).strip().lower()
 
 
+def _norm_text(x: Any) -> str:
+    return str(x or "").strip().lower()
+
+
+def _tokenize_title(x: Any) -> set[str]:
+    s = _norm_text(x)
+    if not s:
+        return set()
+    # Keep it simple (no extra deps): split on non-alnum.
+    out: set[str] = set()
+    cur = []
+    for ch in s:
+        if ch.isalnum():
+            cur.append(ch)
+        else:
+            if cur:
+                out.add("".join(cur))
+                cur = []
+    if cur:
+        out.add("".join(cur))
+    return {t for t in out if t}
+
+
+def _select_relevant_jobs(jobs: list[dict], target_role: str | None, max_jobs: int = 30) -> list[dict]:
+    """Heuristic: prefer jobs whose title matches the user's target role.
+
+    This is intentionally lightweight and deterministic (no embeddings needed).
+    """
+
+    if not target_role:
+        return jobs
+
+    role_tokens = _tokenize_title(target_role)
+    if not role_tokens:
+        return jobs
+
+    scored: list[tuple[float, dict]] = []
+    for j in jobs:
+        title = j.get("title") or j.get("jobTitle") or ""
+        title_tokens = _tokenize_title(title)
+        if not title_tokens:
+            continue
+
+        # Jaccard overlap + substring boost.
+        inter = len(role_tokens & title_tokens)
+        union = len(role_tokens | title_tokens) or 1
+        jacc = inter / union
+        boost = 0.15 if _norm_text(target_role) in _norm_text(title) else 0.0
+        score = jacc + boost
+        if score > 0:
+            scored.append((score, j))
+
+    if not scored:
+        return jobs
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [j for _, j in scored[:max_jobs]]
+
+
 def compute_job_match(user_skills: list[str], job: dict) -> dict:
     job_id = str(job.get("id") or "")
     title = job.get("title") or ""
@@ -27,11 +89,22 @@ def compute_job_match(user_skills: list[str], job: dict) -> dict:
     req_skill_objs = job.get("required_skills") or job.get("requiredSkills") or []
     req_names = [_skill_name(s) for s in req_skill_objs if _skill_name(s)]
 
-    user_norm = {_norm_skill(s) for s in user_skills if _norm_skill(s)}
-    req_norm_by_display: dict[str, str] = {display: _norm_skill(display) for display in req_names}
+    user_norm_list = [_norm_skill(s) for s in user_skills if _norm_skill(s)]
+    req_norm_list = [_norm_skill(s) for s in req_names if _norm_skill(s)]
 
-    matched_display = [d for d in req_names if req_norm_by_display.get(d) in user_norm]
-    gap_display = [d for d in req_names if req_norm_by_display.get(d) not in user_norm]
+    norm_to_display: dict[str, str] = {}
+    for display in req_names:
+        n = _norm_skill(display)
+        if n and n not in norm_to_display:
+            norm_to_display[n] = display
+
+    semantic = calculate_semantic_match(user_norm_list, req_norm_list)
+    matched_norm = set([_norm_skill(s) for s in semantic.get("matched_skills", []) if _norm_skill(s)])
+    gap_norm = set([_norm_skill(s) for s in semantic.get("skill_gap", []) if _norm_skill(s)])
+
+    # Preserve ordering as in the job requirements.
+    matched_display = [d for d in req_names if _norm_skill(d) in matched_norm]
+    gap_display = [d for d in req_names if _norm_skill(d) in gap_norm]
 
     # Enrich missing skills with metadata from job.required_skills
     meta_by_norm: dict[str, dict] = {}
@@ -59,7 +132,7 @@ def compute_job_match(user_skills: list[str], job: dict) -> dict:
 
     strength_areas = list(matched_display)
 
-    match_percentage = (len(matched_display) / len(req_names) * 100) if req_names else 0.0
+    match_percentage = float(semantic.get("match_score", 0.0))
     readiness_score = round(match_percentage)
 
     return {
@@ -74,8 +147,13 @@ def compute_job_match(user_skills: list[str], job: dict) -> dict:
     }
 
 
-def compute_dashboard(user_skills: list[str], jobs: list[dict]) -> dict:
-    job_matches = [compute_job_match(user_skills, j) for j in jobs]
+def compute_dashboard(user_skills: list[str], jobs: list[dict], *, target_role: str | None = None) -> dict:
+    # If the user has a target role/career goal, prioritize jobs aligned to it.
+    jobs_for_matching = _select_relevant_jobs(jobs, target_role)
+
+    user_norm_set = {_norm_skill(s) for s in user_skills if _norm_skill(s)}
+
+    job_matches = [compute_job_match(user_skills, j) for j in jobs_for_matching]
     job_matches.sort(key=lambda m: m.get("matchPercentage", 0), reverse=True)
 
     top3 = job_matches[:3]
@@ -88,113 +166,118 @@ def compute_dashboard(user_skills: list[str], jobs: list[dict]) -> dict:
                 missing.append(g.get("skillName"))
     unique_critical = sorted(set([x for x in missing if x]))
 
-    # Radar data: fixed axes used by the current UI.
-    axes = [
-        "Python",
-        "Machine Learning",
-        "Deep Learning",
-        "Data Analysis",
-        "SQL",
-        "TensorFlow",
-        "Statistics",
-    ]
-
-    user_norm = {_norm_skill(s) for s in user_skills if _norm_skill(s)}
+    # Radar data: dynamic axes derived from job requirements in Firestore (no in-code skill list).
+    user_norm = set(user_norm_set)
     radar = []
     req_counts = Counter()
-    for j in jobs:
+    display_by_norm: dict[str, str] = {}
+    for j in jobs_for_matching:
         for rs in (j.get("required_skills") or j.get("requiredSkills") or []):
+            display = _skill_name(rs)
             norm = _norm_skill(rs)
-            if norm:
-                req_counts[norm] += 1
+            if not norm:
+                continue
+            req_counts[norm] += 1
+            if display and norm not in display_by_norm:
+                display_by_norm[norm] = display
 
+    axes_norm = [n for n, _ in req_counts.most_common(7)]
     max_req = max(req_counts.values()) if req_counts else 1
-    for a in axes:
-        a_norm = a.strip().lower()
+    for n in axes_norm:
         radar.append(
             {
-                "skill": a,
-                "current": 100 if a_norm in user_norm else 0,
-                "required": round((req_counts.get(a_norm, 0) / max_req) * 100),
+                "skill": display_by_norm.get(n, n),
+                "current": 100 if n in user_norm else 0,
+                "required": round((req_counts.get(n, 0) / max_req) * 100),
             }
         )
 
-    # Course recommendations: lightweight mapping from missing critical skills
-    course_map = {
-        "Deep Learning": {
-            "title": "Deep Learning Specialization",
-            "platform": "Coursera",
-            "duration": "3 months",
-            "level": "Intermediate",
-            "readinessBoost": 15,
-            "url": "https://coursera.org/specializations/deep-learning",
-            "rating": 4.9,
-            "skillsCovered": ["Deep Learning", "Neural Networks", "CNNs", "RNNs"],
-        },
-        "PyTorch": {
-            "title": "PyTorch for Deep Learning",
-            "platform": "Udemy",
-            "duration": "2 months",
-            "level": "Intermediate",
-            "readinessBoost": 12,
-            "url": "https://udemy.com/pytorch-deep-learning",
-            "rating": 4.7,
-            "skillsCovered": ["PyTorch", "Deep Learning", "Computer Vision"],
-        },
-        "MLOps": {
-            "title": "MLOps Fundamentals",
-            "platform": "Coursera",
-            "duration": "2 months",
-            "level": "Intermediate",
-            "readinessBoost": 18,
-            "url": "https://coursera.org/learn/mlops",
-            "rating": 4.8,
-            "skillsCovered": ["MLOps", "Docker", "CI/CD", "Model Deployment"],
-        },
-        "Docker": {
-            "title": "Docker for Developers",
-            "platform": "Udemy",
-            "duration": "1 month",
-            "level": "Beginner",
-            "readinessBoost": 10,
-            "url": "https://udemy.com/docker",
-            "rating": 4.7,
-            "skillsCovered": ["Docker", "Containers"],
-        },
-        "Kubernetes": {
-            "title": "Kubernetes Fundamentals",
-            "platform": "Coursera",
-            "duration": "2 months",
-            "level": "Beginner",
-            "readinessBoost": 10,
-            "url": "https://coursera.org/learn/kubernetes",
-            "rating": 4.6,
-            "skillsCovered": ["Kubernetes", "Container Orchestration"],
-        },
-        "Research Publications": {
-            "title": "Writing & Publishing Research",
-            "platform": "Coursera",
-            "duration": "3 months",
-            "level": "Advanced",
-            "readinessBoost": 8,
-            "url": "https://coursera.org",
-            "rating": 4.5,
-            "skillsCovered": ["Research", "Academic Writing"],
-        },
-    }
+    # Rank missing skills by frequency across (goal-filtered) job matches.
+    freq = Counter()
+    for m in job_matches:
+        for g in m.get("missingSkills", []):
+            if not isinstance(g, dict):
+                continue
+            if g.get("priority") != "critical":
+                continue
+            name = _skill_name(g.get("skillName"))
+            if name:
+                freq[name] += 1
 
-    courses = []
-    for s in unique_critical:
-        if s in course_map:
-            c = course_map[s]
+    # If target_role maps to a role rule, boost missing goal skills so course recs align to career goals.
+    if target_role:
+        tr_norm = _norm_text(target_role)
+        tr_tokens = _tokenize_title(tr_norm)
+        best_rule: dict | None = None
+        best_score = 0.0
+        for r in cache.get_roles().rules:
+            role_name = str(r.get("role") or r.get("display_name") or r.get("name") or "").strip()
+            if not role_name:
+                continue
+            rn_norm = _norm_text(role_name)
+            rn_tokens = _tokenize_title(rn_norm)
+            if not rn_tokens:
+                continue
+            inter = len(tr_tokens & rn_tokens)
+            union = len(tr_tokens | rn_tokens) or 1
+            score = (inter / union) + (0.2 if tr_norm and tr_norm in rn_norm else 0.0)
+            if score > best_score:
+                best_score = score
+                best_rule = r
+
+        if best_rule and best_score > 0:
+            must = best_rule.get("must_have_skills") or best_rule.get("mustHaveSkills") or []
+            good = best_rule.get("good_to_have_skills") or best_rule.get("goodToHaveSkills") or []
+
+            if isinstance(must, list):
+                for s in must:
+                    s_norm = _norm_skill(s)
+                    if s_norm and s_norm not in user_norm_set:
+                        # Strong boost for must-have.
+                        freq[s_norm] += 5
+
+            if isinstance(good, list):
+                for s in good:
+                    s_norm = _norm_skill(s)
+                    if s_norm and s_norm not in user_norm_set:
+                        # Smaller boost for good-to-have.
+                        freq[s_norm] += 2
+
+    # Recommend up to 6 skills to keep the UI focused.
+    top_missing = [name for name, _ in freq.most_common(6)]
+
+    # Course recommendations: read from Firestore `courses` collection (no in-code URLs).
+    courses: list[dict] = []
+    for skill in top_missing:
+        # Match on normalized skill.
+        skill_norm = skill.strip().lower()
+        for c in list_courses_for_skill(skill_norm, limit=3):
             courses.append(
                 {
-                    "id": s,
-                    **c,
+                    "id": str(c.get("id") or ""),
+                    "title": c.get("title") or "",
+                    "platform": c.get("platform") or "",
+                    "duration": c.get("duration") or "",
+                    "level": c.get("level") or "",
+                    "readinessBoost": int(c.get("readinessBoost") or c.get("readiness_boost") or 0),
+                    "url": c.get("url") or "",
+                    "rating": float(c.get("rating") or 0),
+                    "skillsCovered": c.get("skillsCovered") or c.get("skills_covered") or [],
                     "status": "recommended",
                     "progress": 0,
                 }
             )
+
+    # De-dup by course id.
+    seen = set()
+    deduped = []
+    for c in courses:
+        cid = str(c.get("id") or "")
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        deduped.append(c)
+    courses = deduped[:10]
 
     # Career path: show the same jobs ordered by readiness as steps.
     career_steps = []

@@ -43,6 +43,30 @@ export async function getJobSeekerDashboard() {
   return response.json();
 }
 
+export async function getCurrentUser(): Promise<{ name: string; email: string; role: string }> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}
+
+export async function getRecommendedJobs(): Promise<{ jobs: any[] }> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/jobs/recommended`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}
+
 export async function getLearningCourses(): Promise<{ courses: any[] }> {
   const token = getToken();
 
@@ -79,4 +103,240 @@ export async function saveLearningCourse(
   });
 
   return response.json();
+}
+
+export async function getRecruiterProfile(): Promise<any> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/recruiter/profile`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}
+
+export async function saveRecruiterProfile(payload: {
+  company: string;
+  companyDescription?: string;
+  industry?: string;
+}): Promise<any> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/recruiter/profile`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return response.json();
+}
+
+export async function createRecruiterJobPosting(payload: any): Promise<any> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/recruiter/job-postings`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    let err: any = null;
+    try {
+      err = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new Error(err?.detail || err?.message || "Failed to post job");
+  }
+
+  return response.json();
+}
+
+export async function getCandidateMatches(jobId?: string): Promise<{ matches: any[] }> {
+  const token = getToken();
+  const qs = jobId ? `?job_id=${encodeURIComponent(jobId)}` : "";
+
+  const response = await fetch(`${BASE_URL}/recruiter/candidate-matches${qs}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.json();
+}
+
+export type RecruiterDashboardPayload = {
+  profile: {
+    email: string;
+    company: string;
+    industry: string;
+  };
+  activeJobs: any[];
+  metrics: {
+    totalCandidates: number;
+    highMatch: number;
+    averageMatch: number;
+    activeJobs: number;
+  };
+  candidates: any[];
+  savedCandidateIds: string[];
+};
+
+export async function getRecruiterDashboard(): Promise<RecruiterDashboardPayload> {
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/recruiter/dashboard`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    let err: any = null;
+    try {
+      err = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new Error(err?.detail || err?.message || "Failed to load recruiter dashboard");
+  }
+
+  return response.json();
+}
+
+export async function toggleSavedCandidate(candidateId: string): Promise<{ saved: boolean; candidateId: string }> {
+  const token = getToken();
+  const cid = encodeURIComponent(candidateId);
+
+  const response = await fetch(`${BASE_URL}/recruiter/saved-candidates/${cid}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    let err: any = null;
+    try {
+      err = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new Error(err?.detail || err?.message || "Failed to update saved candidate");
+  }
+
+  return response.json();
+}
+
+export async function setRecruiterJobStatus(jobId: string, status: "active" | "closed" | "draft") {
+  const token = getToken();
+  const jid = encodeURIComponent(jobId);
+
+  const response = await fetch(`${BASE_URL}/recruiter/job-postings/${jid}/status`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    let err: any = null;
+    try {
+      err = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new Error(err?.detail || err?.message || "Failed to update job status");
+  }
+
+  return response.json();
+}
+
+export async function getCandidateResume(candidateId: string): Promise<any> {
+  const token = getToken();
+  const cid = encodeURIComponent(candidateId);
+
+  const response = await fetch(`${BASE_URL}/recruiter/candidate-resume/${cid}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    let err: any = null;
+    try {
+      err = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new Error(err?.detail || err?.message || "Failed to fetch candidate resume data");
+  }
+
+  return response.json();
+}
+
+export async function contactCandidate(candidateId: string): Promise<{ message: string }>
+{
+  const token = getToken();
+
+  const response = await fetch(`${BASE_URL}/recruiter/contact-candidate`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ candidate_id: candidateId }),
+  });
+
+  if (!response.ok) {
+    let err: any = null;
+    try {
+      err = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new Error(err?.detail || err?.message || "Failed to contact candidate");
+  }
+
+  return response.json();
+}
+
+export async function getCandidateResumePdf(candidateId: string): Promise<Blob> {
+  const token = getToken();
+  const cid = encodeURIComponent(candidateId);
+
+  const response = await fetch(`${BASE_URL}/candidate/resume-pdf/${cid}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    let err: any = null;
+    try {
+      err = await response.json();
+    } catch {
+      // ignore
+    }
+    throw new Error(err?.detail || err?.message || "Failed to download resume PDF");
+  }
+
+  return response.blob();
 }

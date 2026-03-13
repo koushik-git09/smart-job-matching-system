@@ -71,6 +71,7 @@ export interface RecruiterProfile {
 export interface JobPosting {
   id: string;
   title: string;
+  company?: string;
   description: string;
   requiredSkills: JobSkill[];
   experienceLevel: string;
@@ -181,4 +182,25 @@ export interface CandidateMatch {
   readinessScore: number;
   strengthAreas: string[];
   missingSkills: string[];
+  saved?: boolean;
+  email?: string;
+  phone?: string;
+  resumeUrl?: string;
+}
+
+export interface RecruiterDashboardPayload {
+  profile: {
+    email: string;
+    company: string;
+    industry: string;
+  };
+  metrics: {
+    totalCandidates: number;
+    highMatch: number;
+    averageMatch: number;
+    activeJobs: number;
+  };
+  activeJobs: JobPosting[];
+  candidates: CandidateMatch[];
+  savedCandidateIds: string[];
 }
