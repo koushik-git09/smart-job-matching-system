@@ -2,7 +2,6 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import Depends
 import os
 
 
@@ -28,7 +27,7 @@ def verify_token(token: str = Depends(oauth2_scheme)):
         email = payload.get("email")
         role = payload.get("role")
 
-        if not isinstance(email, str) or not isinstance(role, str):
+        if not isinstance(email, str) or not isinstance(role, str) or not email or not role:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",

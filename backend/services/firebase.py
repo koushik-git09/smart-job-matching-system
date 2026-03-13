@@ -1,12 +1,9 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-from google.cloud import firestore as g_firestore
-
 import os
 import base64
 import json
-from typing import cast
 
 
 def _get_firebase_credential() -> credentials.Base:
@@ -43,4 +40,4 @@ cred = _get_firebase_credential()
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
-db: g_firestore.Client = cast(g_firestore.Client, firestore.client())
+db = firestore.client()
