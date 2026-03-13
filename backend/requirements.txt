@@ -13,3 +13,5 @@ scikit-learn
 numpy
 spacy
 transformers
+spacy==3.7.4
+pydantic==1.10.13
