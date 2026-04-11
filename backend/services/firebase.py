@@ -1,6 +1,8 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+from google.cloud.firestore_v1 import Client as FirestoreClient
+
 import os
 import base64
 import json
@@ -40,4 +42,4 @@ cred = _get_firebase_credential()
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
-db = firestore.client()
+db: FirestoreClient = firestore.client()

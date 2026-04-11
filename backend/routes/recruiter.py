@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,9 +10,22 @@ from pydantic import BaseModel
 from models.token import require_role
 from services.dashboard_compute import compute_job_match
 from services.match_scoring import score_job_fit
-from services.firebase import db
+from google.cloud.firestore_v1 import Client as FirestoreClient
+from google.cloud.firestore_v1 import DocumentSnapshot
+from google.cloud.firestore_v1.base_document import BaseDocumentReference
+
+from services.firebase import db as _db
 from services.catalog import cache
 from services.email_service import compose_interview_invitation, send_email, EmailSendError
+
+db: FirestoreClient = _db
+
+
+def _get_snap(ref: BaseDocumentReference) -> DocumentSnapshot:
+    # Firestore's BaseDocumentReference.get() is typed as
+    # `DocumentSnapshot | Awaitable[DocumentSnapshot]` to share an API between
+    # sync/async implementations; this project uses the sync client.
+    return cast(DocumentSnapshot, ref.get())
 
 router = APIRouter()
 
@@ -128,6 +142,7 @@ def _recruiter_job_ids(recruiter_email: str, *, status: str | None = None) -> li
 
 
 def _map_job_doc_to_frontend(job: dict) -> dict:
+    created_at = job.get("created_at")
     required = job.get("required_skills") or job.get("requiredSkills") or []
     required_skills = []
     for rs in required:
@@ -159,14 +174,15 @@ def _map_job_doc_to_frontend(job: dict) -> dict:
         },
         "type": job.get("type") or "",
         "posted": job.get("posted")
-        or (job.get("created_at").isoformat() if hasattr(job.get("created_at"), "isoformat") else ""),
+        or (created_at.isoformat() if isinstance(created_at, datetime) else ""),
     }
 
 
 @router.get("/profile")
 def get_profile(user: dict = Depends(require_role("recruiter"))):
     user_ref = db.collection("users").document(user["email"])
-    user_doc = (user_ref.get().to_dict() or {}) if user_ref.get().exists else {}
+    user_snap = _get_snap(user_ref)
+    user_doc = (user_snap.to_dict() or {}) if user_snap.exists else {}
 
     # Recruiter profile is stored on the user document for simplicity.
     company = user_doc.get("company") or ""
@@ -175,7 +191,7 @@ def get_profile(user: dict = Depends(require_role("recruiter"))):
 
     job_postings = []
     for job_id in _recruiter_job_ids(user["email"], status="active"):
-        snap = db.collection("jobs").document(job_id).get()
+        snap = _get_snap(db.collection("jobs").document(job_id))
         if not snap.exists:
             continue
         d = snap.to_dict() or {}
@@ -281,7 +297,7 @@ def create_job_posting(payload: dict, user: dict = Depends(require_role("recruit
 def list_job_postings(user: dict = Depends(require_role("recruiter"))):
     jobs = []
     for job_id in _recruiter_job_ids(user["email"], status="active"):
-        snap = db.collection("jobs").document(job_id).get()
+        snap = _get_snap(db.collection("jobs").document(job_id))
         if not snap.exists:
             continue
         d = snap.to_dict() or {}
@@ -296,7 +312,7 @@ def candidate_matches(job_id: str | None = None, user: dict = Depends(require_ro
     # Pick a job posting (explicit or first available).
     job_doc = None
     if job_id:
-        snap = db.collection("jobs").document(job_id).get()
+        snap = _get_snap(db.collection("jobs").document(job_id))
         if not snap.exists:
             raise HTTPException(status_code=404, detail="Job not found")
         job_doc = snap.to_dict() or {}
@@ -305,7 +321,7 @@ def candidate_matches(job_id: str | None = None, user: dict = Depends(require_ro
         ids = _recruiter_job_ids(user["email"])
         if not ids:
             return {"matches": []}
-        s0 = db.collection("jobs").document(ids[0]).get()
+        s0 = _get_snap(db.collection("jobs").document(ids[0]))
         if not s0.exists:
             return {"matches": []}
         job_doc = s0.to_dict() or {}
@@ -319,7 +335,12 @@ def candidate_matches(job_id: str | None = None, user: dict = Depends(require_ro
         if ud.get("role") != "jobseeker":
             continue
         candidate_email = str(ud.get("email") or u.id)
-        resume_snap = db.collection("users").document(candidate_email).collection("resume").document("latest").get()
+        resume_snap = _get_snap(
+            db.collection("users")
+            .document(candidate_email)
+            .collection("resume")
+            .document("latest")
+        )
         if not resume_snap.exists:
             continue
         resume_data = resume_snap.to_dict() or {}
@@ -383,14 +404,14 @@ def recruiter_dashboard(user: dict = Depends(require_role("recruiter"))):
 
     # Recruiter profile basics.
     user_ref = db.collection("users").document(user["email"])
-    snap = user_ref.get()
+    snap = _get_snap(user_ref)
     ud = (snap.to_dict() or {}) if snap.exists else {}
 
     # Active jobs.
     job_ids = _recruiter_job_ids(user["email"], status="active")
     jobs: list[dict] = []
     for job_id in job_ids:
-        js = db.collection("jobs").document(job_id).get()
+        js = _get_snap(db.collection("jobs").document(job_id))
         if not js.exists:
             continue
         d = js.to_dict() or {}
@@ -429,7 +450,12 @@ def recruiter_dashboard(user: dict = Depends(require_role("recruiter"))):
             continue
 
         candidate_email = str(udoc.get("email") or u.id)
-        resume_snap = db.collection("users").document(candidate_email).collection("resume").document("latest").get()
+        resume_snap = _get_snap(
+            db.collection("users")
+            .document(candidate_email)
+            .collection("resume")
+            .document("latest")
+        )
         if not resume_snap.exists:
             continue
         resume = resume_snap.to_dict() or {}
@@ -515,7 +541,7 @@ def toggle_saved_candidate(candidate_id: str, user: dict = Depends(require_role(
         raise HTTPException(status_code=400, detail="candidate_id is required")
 
     ref = db.collection("users").document(user["email"]).collection("saved_candidates").document(cid)
-    snap = ref.get()
+    snap = _get_snap(ref)
     if snap.exists:
         ref.delete()
         return {"saved": False, "candidateId": cid}
@@ -540,18 +566,24 @@ def get_candidate_resume(candidate_id: str, user: dict = Depends(require_role("r
     if not cid:
         raise HTTPException(status_code=400, detail="candidate_id is required")
 
-    resume_snap = db.collection("users").document(cid).collection("resume").document("latest").get()
+    resume_snap = _get_snap(
+        db.collection("users")
+        .document(cid)
+        .collection("resume")
+        .document("latest")
+    )
     if not resume_snap.exists:
         raise HTTPException(status_code=404, detail="Resume not found")
 
     r = resume_snap.to_dict() or {}
+    uploaded_at = r.get("uploaded_at")
     return {
         "candidateId": cid,
         "extracted_skills": r.get("extracted_skills") or [],
         "extracted_skills_norm": r.get("extracted_skills_norm") or [],
         "predicted_role": r.get("predicted_role") or "",
         "predicted_role_score": r.get("predicted_role_score") or 0,
-        "uploaded_at": r.get("uploaded_at").isoformat() if hasattr(r.get("uploaded_at"), "isoformat") else r.get("uploaded_at") or "",
+        "uploaded_at": uploaded_at.isoformat() if isinstance(uploaded_at, datetime) else (uploaded_at or ""),
     }
 
 
@@ -568,7 +600,8 @@ def set_job_status(job_id: str, payload: dict, user: dict = Depends(require_role
 
     # Ensure this job is owned by recruiter.
     owner_ref = db.collection("users").document(user["email"]).collection("job_postings").document(jid)
-    if not owner_ref.get().exists:
+    owner_snap = _get_snap(owner_ref)
+    if not owner_snap.exists:
         raise HTTPException(status_code=404, detail="Job not found")
 
     owner_ref.set({"status": status, "updated_at": datetime.utcnow()}, merge=True)
@@ -586,16 +619,16 @@ def contact_candidate(payload: ContactCandidateRequest, user: dict = Depends(req
         raise HTTPException(status_code=400, detail="candidate_id is required")
 
     # Recruiter identity (company name is used in the email subject).
-    recruiter_snap = db.collection("users").document(user["email"]).get()
+    recruiter_snap = _get_snap(db.collection("users").document(user["email"]))
     recruiter_doc = (recruiter_snap.to_dict() or {}) if recruiter_snap.exists else {}
     company_name = str(recruiter_doc.get("company") or "Company").strip() or "Company"
 
     # Candidate data.
-    candidate_snap = db.collection("users").document(cid).get()
+    candidate_snap = _get_snap(db.collection("users").document(cid))
     if not candidate_snap.exists and cid_raw.lower() != cid_raw:
         # Some callers normalize emails; try lowercase as a fallback.
         cid = cid_raw.lower()
-        candidate_snap = db.collection("users").document(cid).get()
+        candidate_snap = _get_snap(db.collection("users").document(cid))
     if not candidate_snap.exists:
         raise HTTPException(status_code=404, detail="Candidate not found")
     candidate_doc = candidate_snap.to_dict() or {}
