@@ -1,4 +1,4 @@
-fastapi
+fastapi<0.100
 uvicorn
 python-multipart
 firebase-admin
@@ -18,4 +18,4 @@ transformers
 spacy==3.7.4
 thinc==8.2.2
 blis==0.7.11
-pydantic==1.10.13
+pydantic>=1.10.14,<2.0
