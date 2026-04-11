@@ -19,7 +19,7 @@ def _norm(s: Any) -> str:
 class SkillsCatalog:
     canonical_by_norm: dict[str, str]
     aliases_to_canonical_norm: dict[str, str]
-    all_skill_terms: list[str]
+    all_skill_terms: tuple[str, ...]
 
 
 @dataclass
@@ -42,6 +42,9 @@ class _CatalogCache:
         self.ttl = timedelta(seconds=ttl_seconds)
         self._skills: tuple[datetime, SkillsCatalog] | None = None
         self._roles: tuple[datetime, RolesCatalog] | None = None
+        self._jobs: tuple[datetime, JobsCatalog] | None = None
+        # Cache results of the 'courses for skill' query per normalized skill.
+        self._courses_by_skill: dict[str, tuple[datetime, list[dict]]] = {}
 
     def get_skills(self) -> SkillsCatalog:
         if self._skills and (_now_utc() - self._skills[0]) < self.ttl:
@@ -73,7 +76,7 @@ class _CatalogCache:
         catalog = SkillsCatalog(
             canonical_by_norm=canonical_by_norm,
             aliases_to_canonical_norm=aliases_to_canonical_norm,
-            all_skill_terms=sorted(terms),
+            all_skill_terms=tuple(sorted(terms)),
         )
         self._skills = (_now_utc(), catalog)
         return catalog
@@ -92,39 +95,60 @@ class _CatalogCache:
         self._roles = (_now_utc(), catalog)
         return catalog
 
+    def get_jobs(self) -> JobsCatalog:
+        if self._jobs and (_now_utc() - self._jobs[0]) < self.ttl:
+            return self._jobs[1]
+
+        jobs: list[dict] = []
+        for s in db.collection("jobs").stream():
+            d = s.to_dict() or {}
+            d.setdefault("id", s.id)
+            jobs.append(d)
+
+        catalog = JobsCatalog(jobs=jobs)
+        self._jobs = (_now_utc(), catalog)
+        return catalog
+
+    def get_courses_for_skill(self, skill_norm: str, limit: int = 5) -> list[dict]:
+        # Firestore supports array-contains for single value.
+        # Expect courses documents to have `skills_covered_norm` (preferred) or `skillsCovered`.
+        skill_norm = _norm(skill_norm)
+        if not skill_norm:
+            return []
+
+        now = _now_utc()
+        cached = self._courses_by_skill.get(skill_norm)
+        if cached and (now - cached[0]) < self.ttl:
+            return cached[1][:limit]
+
+        # Fetch a small page and cache it.
+        fetch_limit = max(int(limit or 5), 10)
+        courses: list[dict] = []
+
+        query = db.collection("courses").where("skills_covered_norm", "array_contains", skill_norm).limit(fetch_limit)
+        for s in query.stream():
+            d = s.to_dict() or {}
+            d.setdefault("id", s.id)
+            courses.append(d)
+
+        # Backward compat if you stored `skillsCovered` instead.
+        if not courses:
+            query2 = db.collection("courses").where("skillsCovered", "array_contains", skill_norm).limit(fetch_limit)
+            for s in query2.stream():
+                d = s.to_dict() or {}
+                d.setdefault("id", s.id)
+                courses.append(d)
+
+        self._courses_by_skill[skill_norm] = (now, courses)
+        return courses[:limit]
+
 
 cache = _CatalogCache()
 
 
 def list_jobs() -> list[dict]:
-    jobs: list[dict] = []
-    for s in db.collection("jobs").stream():
-        d = s.to_dict() or {}
-        d.setdefault("id", s.id)
-        jobs.append(d)
-    return jobs
+    return cache.get_jobs().jobs
 
 
 def list_courses_for_skill(skill_norm: str, limit: int = 5) -> list[dict]:
-    # Firestore supports array-contains for single value.
-    # Expect courses documents to have `skills_covered_norm` (preferred) or `skillsCovered`.
-    courses: list[dict] = []
-    skill_norm = _norm(skill_norm)
-    if not skill_norm:
-        return courses
-
-    query = db.collection("courses").where("skills_covered_norm", "array_contains", skill_norm).limit(limit)
-    for s in query.stream():
-        d = s.to_dict() or {}
-        d.setdefault("id", s.id)
-        courses.append(d)
-
-    # Backward compat if you stored `skillsCovered` instead.
-    if not courses:
-        query2 = db.collection("courses").where("skillsCovered", "array_contains", skill_norm).limit(limit)
-        for s in query2.stream():
-            d = s.to_dict() or {}
-            d.setdefault("id", s.id)
-            courses.append(d)
-
-    return courses
+    return cache.get_courses_for_skill(skill_norm, limit=limit)

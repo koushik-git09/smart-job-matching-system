@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any
 
 from services.catalog import cache
@@ -8,6 +9,19 @@ from services.nlp_models import get_bert_ner_pipeline, get_spacy_nlp
 
 def _norm(s: Any) -> str:
     return str(s or "").strip().lower()
+
+
+@lru_cache(maxsize=4)
+def _get_skill_phrase_matcher(vocab_key: int, terms: tuple[str, ...]):
+    # Build once per (spaCy vocab, skill terms set).
+    nlp = get_spacy_nlp()
+    from spacy.matcher import PhraseMatcher
+
+    matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
+    patterns = [nlp.make_doc(t) for t in terms if t]
+    if patterns:
+        matcher.add("SKILL", patterns)
+    return matcher
 
 
 def extract_skills_advanced(text: str) -> dict:
@@ -27,11 +41,7 @@ def extract_skills_advanced(text: str) -> dict:
     nlp = get_spacy_nlp()
 
     # Build matcher from DB skill terms + aliases.
-    from spacy.matcher import PhraseMatcher
-    matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
-    patterns = [nlp.make_doc(t) for t in skills_catalog.all_skill_terms if t]
-    if patterns:
-        matcher.add("SKILL", patterns)
+    matcher = _get_skill_phrase_matcher(id(nlp.vocab), skills_catalog.all_skill_terms)
 
     doc = nlp(text)
 
