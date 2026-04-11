@@ -15,11 +15,19 @@ def get_spacy_nlp():
     model = os.getenv("SPACY_MODEL", "en_core_web_sm")
     try:
         return spacy.load(model)
-    except Exception as e:
-        raise RuntimeError(
-            f"SpaCy model '{model}' is not available. "
-            f"Install it with: python -m spacy download {model}"
-        ) from e
+    except Exception:
+        # Deployments sometimes omit the full model package. Fall back to a blank
+        # pipeline so core tokenization / PhraseMatcher still work.
+        try:
+            lang = "en"
+            if isinstance(model, str) and model:
+                # Best-effort: infer language code from model name.
+                lang = model.split("_")[0] if "_" in model else model
+            return spacy.blank(lang)
+        except Exception as e:
+            raise RuntimeError(
+                f"SpaCy could not load model '{model}' and could not create a blank pipeline."
+            ) from e
 
 
 @lru_cache(maxsize=1)

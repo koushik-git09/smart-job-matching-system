@@ -16,6 +16,7 @@ numpy==1.26.4
 transformers
 
 spacy==3.7.4
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
 thinc==8.2.2
 blis==0.7.11
 pydantic>=1.10.14,<2.0
