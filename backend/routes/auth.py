@@ -1,5 +1,6 @@
 from datetime import datetime
 import inspect
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,6 +11,8 @@ from models.token import create_access_token, verify_token
 
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 async def _maybe_await(value: Any) -> Any:
     """Resolve Firestore calls for both sync and async clients."""
@@ -28,29 +31,43 @@ pwd_context = CryptContext(
 
 @router.post("/signup")
 async def signup(user: UserCreate):
-    users_ref = db.collection("users")
-    user_doc_ref = users_ref.document(user.email)
-    existing = await _maybe_await(user_doc_ref.get())
+    try:
+        users_ref = db.collection("users")
+        user_doc_ref = users_ref.document(user.email)
+        existing = await _maybe_await(user_doc_ref.get())
+    except Exception:
+        logger.exception("Firestore error during signup")
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
     if existing.exists:
         raise HTTPException(status_code=400, detail="User already exists")
 
     # Hash password safely
     hashed_password = pwd_context.hash(user.password)
 
-    user_doc_ref.set({
-        "name": user.name,
-        "email": user.email,
-        "password": hashed_password,
-        "role": user.role
-    })
+    try:
+        user_doc_ref.set({
+            "name": user.name,
+            "email": user.email,
+            "password": hashed_password,
+            "role": user.role,
+        })
+    except Exception:
+        logger.exception("Firestore error writing new user")
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
 
     return {"message": "User created successfully"}
 
 
 @router.post("/login")
 async def login(user: UserLogin):
-    user_doc_ref = db.collection("users").document(user.email)
-    snapshot = await _maybe_await(user_doc_ref.get())
+    try:
+        user_doc_ref = db.collection("users").document(user.email)
+        snapshot = await _maybe_await(user_doc_ref.get())
+    except Exception:
+        logger.exception("Firestore error during login")
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
     if not snapshot.exists:
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
@@ -63,7 +80,14 @@ async def login(user: UserLogin):
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
     # Verify password safely
-    if not pwd_context.verify(user.password, password_hash):
+    try:
+        ok = pwd_context.verify(user.password, password_hash)
+    except Exception:
+        # Unknown hash format / corrupted hash should not 500.
+        logger.exception("Password verification failed")
+        ok = False
+
+    if not ok:
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
     token = create_access_token({
@@ -72,13 +96,17 @@ async def login(user: UserLogin):
     })
 
     # Track login state in Firestore to enable recruiter-side filtering.
-    user_doc_ref.set(
-        {
-            "is_logged_in": True,
-            "last_login_at": datetime.utcnow(),
-        },
-        merge=True,
-    )
+    try:
+        user_doc_ref.set(
+            {
+                "is_logged_in": True,
+                "last_login_at": datetime.utcnow(),
+            },
+            merge=True,
+        )
+    except Exception:
+        logger.exception("Firestore error updating login markers")
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
 
     return {"access_token": token, "role": role}
 
@@ -91,14 +119,18 @@ async def logout(current_user: dict = Depends(verify_token)):
     Firestore fields (used for recruiter filtering of 'logged in' jobseekers).
     """
 
-    user_doc_ref = db.collection("users").document(current_user["email"])
-    user_doc_ref.set(
-        {
-            "is_logged_in": False,
-            "last_logout_at": datetime.utcnow(),
-        },
-        merge=True,
-    )
+    try:
+        user_doc_ref = db.collection("users").document(current_user["email"])
+        user_doc_ref.set(
+            {
+                "is_logged_in": False,
+                "last_logout_at": datetime.utcnow(),
+            },
+            merge=True,
+        )
+    except Exception:
+        logger.exception("Firestore error during logout")
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
     return {"message": "Logged out"}
 
 
@@ -106,8 +138,13 @@ async def logout(current_user: dict = Depends(verify_token)):
 async def me(current_user: dict = Depends(verify_token)):
     """Return the current user's public profile fields."""
 
-    user_doc_ref = db.collection("users").document(current_user["email"])
-    snap = await _maybe_await(user_doc_ref.get())
+    try:
+        user_doc_ref = db.collection("users").document(current_user["email"])
+        snap = await _maybe_await(user_doc_ref.get())
+    except Exception:
+        logger.exception("Firestore error loading current user")
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
     if not snap.exists:
         raise HTTPException(status_code=404, detail="User not found")
 

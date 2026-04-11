@@ -24,6 +24,22 @@ From the repo root:
 
 The frontend expects the backend at `http://127.0.0.1:8000` by default.
 
+### Backend environment variables (CORS + Firebase)
+
+For local dev, you can copy [backend/.env.example](backend/.env.example) to `backend/.env`.
+
+For deployment (e.g., Render), set these as platform environment variables:
+
+- `CORS_ALLOW_ORIGINS`: comma-separated allowed browser origins.
+  - Example: `https://smart-job-matching-system.vercel.app,http://localhost:5173`
+  - If this is missing/incorrect, the browser will show CORS errors and you won’t be able to read the backend response.
+- `CORS_ALLOW_ORIGIN_REGEX` (optional): useful for Vercel preview URLs.
+  - Example: `^https://.*\\.vercel\\.app$`
+- Firebase / Firestore credentials (provide one):
+  - `FIREBASE_SERVICE_ACCOUNT_JSON` (raw JSON)
+  - `FIREBASE_SERVICE_ACCOUNT_B64` (base64 JSON)
+  - `GOOGLE_APPLICATION_CREDENTIALS` (path to JSON on disk)
+
 ### Recruiter “Contact” email
 
 The recruiter Contact button calls `POST /recruiter/contact-candidate`, which sends email via SMTP.

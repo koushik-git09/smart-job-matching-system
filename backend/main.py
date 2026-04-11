@@ -2,6 +2,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 from routes import auth
 from routes import dashboard
 from routes import resume
@@ -9,6 +10,10 @@ from routes import jobs
 from routes import match
 from routes import learning
 from routes import recruiter
+
+
+# Load backend/.env for local development (Render/Vercel should use platform env vars).
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=False)
 
 app = FastAPI()
 
@@ -24,7 +29,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         o.strip()
-        for o in os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:5173").split(",")
+        for o in os.getenv(
+            "CORS_ALLOW_ORIGINS",
+            "http://localhost:5173,http://localhost:3000",
+        ).split(",")
         if o.strip()
     ],
     allow_origin_regex=os.getenv("CORS_ALLOW_ORIGIN_REGEX") or None,
