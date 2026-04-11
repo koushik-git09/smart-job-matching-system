@@ -35,28 +35,26 @@ async def signup(user: UserCreate):
         users_ref = db.collection("users")
         user_doc_ref = users_ref.document(user.email)
         existing = await _maybe_await(user_doc_ref.get())
-    except Exception:
-        logger.exception("Firestore error during signup")
-        raise HTTPException(status_code=503, detail="Authentication service unavailable")
 
-    if existing.exists:
-        raise HTTPException(status_code=400, detail="User already exists")
+        if existing.exists:
+            raise HTTPException(status_code=400, detail="User already exists")
 
-    # Hash password safely
-    hashed_password = pwd_context.hash(user.password)
+        # Hash password safely
+        hashed_password = pwd_context.hash(user.password)
 
-    try:
         user_doc_ref.set({
             "name": user.name,
             "email": user.email,
             "password": hashed_password,
             "role": user.role,
         })
-    except Exception:
-        logger.exception("Firestore error writing new user")
-        raise HTTPException(status_code=503, detail="Authentication service unavailable")
 
-    return {"message": "User created successfully"}
+        return {"message": "User created successfully"}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Unhandled error during signup")
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
 
 
 @router.post("/login")

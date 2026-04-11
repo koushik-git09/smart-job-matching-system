@@ -4,6 +4,7 @@ python-multipart
 firebase-admin
 python-jose
 passlib[bcrypt]
+bcrypt<4
 python-dotenv
 email-validator
 pdfplumber
