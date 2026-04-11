@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from spacy.matcher import PhraseMatcher
-
 from services.catalog import cache
 from services.nlp_models import get_bert_ner_pipeline, get_spacy_nlp
 
@@ -29,6 +27,7 @@ def extract_skills_advanced(text: str) -> dict:
     nlp = get_spacy_nlp()
 
     # Build matcher from DB skill terms + aliases.
+    from spacy.matcher import PhraseMatcher
     matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
     patterns = [nlp.make_doc(t) for t in skills_catalog.all_skill_terms if t]
     if patterns:

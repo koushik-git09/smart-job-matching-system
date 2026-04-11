@@ -6,21 +6,21 @@ from typing import List
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-try:
-    from sentence_transformers import SentenceTransformer  # type: ignore
-
-    _HAS_SENTENCE_TRANSFORMERS = True
-except Exception:
-    SentenceTransformer = None
-    _HAS_SENTENCE_TRANSFORMERS = False
-
 
 @lru_cache(maxsize=1)
 def _get_st_model():
-    if not _HAS_SENTENCE_TRANSFORMERS or SentenceTransformer is None:
+    # Fully lazy import so app startup stays fast.
+    # (On some hosts, importing sentence_transformers/torch can be slow.)
+    try:
+        from sentence_transformers import SentenceTransformer  # type: ignore
+    except Exception:
         return None
-    # Lazy-load so the backend can run without torch.
-    return SentenceTransformer("all-MiniLM-L6-v2")
+
+    try:
+        # Lazy-load so the backend can run even if torch/model downloads fail.
+        return SentenceTransformer("all-MiniLM-L6-v2")
+    except Exception:
+        return None
 
 
 def _max_similarity_tfidf(required_skills: List[str], user_skills: List[str]) -> List[float]:
@@ -52,7 +52,8 @@ def calculate_semantic_match(user_skills: List[str], required_skills: List[str],
         return {"match_score": 0, "matched_skills": matched, "skill_gap": gap}
 
     # If caller uses the default ST threshold, make the fallback usable.
-    effective_threshold = 0.2 if (not _HAS_SENTENCE_TRANSFORMERS and threshold == 0.5) else threshold
+    # If SentenceTransformers isn't available, TF-IDF cosine tends to need a lower threshold.
+    effective_threshold = 0.2 if (_get_st_model() is None and threshold == 0.5) else threshold
 
     model = _get_st_model()
     if model is not None:
