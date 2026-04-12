@@ -27,14 +27,7 @@ app.include_router(recruiter.router, prefix="/recruiter", tags=["Recruiter"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        o.strip()
-        for o in os.getenv(
-            "CORS_ALLOW_ORIGINS",
-            "http://localhost:5173,http://localhost:3000",
-        ).split(",")
-        if o.strip()
-    ],
+    allow_origins=["*"],
     allow_origin_regex=os.getenv("CORS_ALLOW_ORIGIN_REGEX") or None,
     allow_credentials=True,
     allow_methods=["*"],

@@ -4,10 +4,6 @@ import os
 from functools import lru_cache
 
 
-def _env_flag(name: str, default: str = "0") -> bool:
-    return str(os.getenv(name, default)).strip().lower() in {"1", "true", "yes", "y", "on"}
-
-
 @lru_cache(maxsize=1)
 def get_spacy_nlp():
     import spacy
@@ -32,11 +28,11 @@ def get_spacy_nlp():
 
 @lru_cache(maxsize=1)
 def get_bert_ner_pipeline():
-    if not _env_flag("ENABLE_BERT_NER", "0"):
-        return None
+    """Deprecated: previously returned a HuggingFace NER pipeline.
 
-    from transformers import pipeline
+    This project has been refactored to remove heavy ML dependencies
+    (transformers/torch). Keep the function for compatibility with existing
+    call sites, but always disable BERT NER.
+    """
 
-    model_name = os.getenv("BERT_NER_MODEL", "dslim/bert-base-NER")
-    # grouped_entities=True returns merged spans.
-    return pipeline("ner", model=model_name, grouped_entities=True)
+    return None

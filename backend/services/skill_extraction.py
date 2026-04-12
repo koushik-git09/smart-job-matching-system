@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Any
 
 from services.catalog import cache
-from services.nlp_models import get_bert_ner_pipeline, get_spacy_nlp
+from services.nlp_models import get_spacy_nlp
 
 
 def _norm(s: Any) -> str:
@@ -25,7 +25,7 @@ def _get_skill_phrase_matcher(vocab_key: int, terms: tuple[str, ...]):
 
 
 def extract_skills_advanced(text: str) -> dict:
-    """Extract skills using DB-driven phrase matching + optional BERT NER.
+    """Extract skills using DB-driven phrase matching.
 
     Returns:
       {
@@ -52,20 +52,11 @@ def extract_skills_advanced(text: str) -> dict:
         if term:
             matched_terms.add(term)
 
+    # Heavy ML-based NER (transformers/torch) was removed to keep the backend lightweight.
+    # Keep the output schema stable by returning an empty NER hit list.
     ner_hits: set[str] = set()
-    ner_pipe = get_bert_ner_pipeline()
-    if ner_pipe is not None:
-        try:
-            entities = ner_pipe(text)
-            for ent in entities or []:
-                word = _norm(ent.get("word"))
-                if word:
-                    ner_hits.add(word)
-        except Exception:
-            # If model isn't downloaded / runtime error, proceed with phrase matches only.
-            pass
 
-    all_terms = matched_terms | ner_hits
+    all_terms = matched_terms
 
     canonical_norms: set[str] = set()
     for t in all_terms:
