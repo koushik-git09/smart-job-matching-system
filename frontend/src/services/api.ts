@@ -1,6 +1,6 @@
 import { getToken } from "./auth";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+import { API_BASE_URL } from "./apiBase";
 
 export async function uploadResume(file: File) {
   const token = getToken();
@@ -8,7 +8,7 @@ export async function uploadResume(file: File) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${BASE_URL}/resume/upload`, {
+  const response = await fetch(`${API_BASE_URL}/resume/upload`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -22,7 +22,7 @@ export async function uploadResume(file: File) {
 export async function matchJob(jobId: string) {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/match/job/${jobId}`, {
+  const response = await fetch(`${API_BASE_URL}/match/job/${jobId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -34,7 +34,7 @@ export async function matchJob(jobId: string) {
 export async function getJobSeekerDashboard() {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/jobseeker-dashboard`, {
+  const response = await fetch(`${API_BASE_URL}/jobseeker-dashboard`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -46,7 +46,7 @@ export async function getJobSeekerDashboard() {
 export async function getCurrentUser(): Promise<{ name: string; email: string; role: string }> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/auth/me`, {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -58,7 +58,7 @@ export async function getCurrentUser(): Promise<{ name: string; email: string; r
 export async function getRecommendedJobs(): Promise<{ jobs: any[] }> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/jobs/recommended`, {
+  const response = await fetch(`${API_BASE_URL}/jobs/recommended`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -70,7 +70,7 @@ export async function getRecommendedJobs(): Promise<{ jobs: any[] }> {
 export async function getLearningCourses(): Promise<{ courses: any[] }> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/learning/courses`, {
+  const response = await fetch(`${API_BASE_URL}/learning/courses`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -93,7 +93,7 @@ export async function saveLearningCourse(
 ): Promise<any> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/learning/courses/${courseId}`, {
+  const response = await fetch(`${API_BASE_URL}/learning/courses/${courseId}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -108,7 +108,7 @@ export async function saveLearningCourse(
 export async function getRecruiterProfile(): Promise<any> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/recruiter/profile`, {
+  const response = await fetch(`${API_BASE_URL}/recruiter/profile`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -124,7 +124,7 @@ export async function saveRecruiterProfile(payload: {
 }): Promise<any> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/recruiter/profile`, {
+  const response = await fetch(`${API_BASE_URL}/recruiter/profile`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -139,7 +139,7 @@ export async function saveRecruiterProfile(payload: {
 export async function createRecruiterJobPosting(payload: any): Promise<any> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/recruiter/job-postings`, {
+  const response = await fetch(`${API_BASE_URL}/recruiter/job-postings`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -165,7 +165,7 @@ export async function getCandidateMatches(jobId?: string): Promise<{ matches: an
   const token = getToken();
   const qs = jobId ? `?job_id=${encodeURIComponent(jobId)}` : "";
 
-  const response = await fetch(`${BASE_URL}/recruiter/candidate-matches${qs}`, {
+  const response = await fetch(`${API_BASE_URL}/recruiter/candidate-matches${qs}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -194,7 +194,7 @@ export type RecruiterDashboardPayload = {
 export async function getRecruiterDashboard(): Promise<RecruiterDashboardPayload> {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/recruiter/dashboard`, {
+  const response = await fetch(`${API_BASE_URL}/recruiter/dashboard`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -217,7 +217,7 @@ export async function toggleSavedCandidate(candidateId: string): Promise<{ saved
   const token = getToken();
   const cid = encodeURIComponent(candidateId);
 
-  const response = await fetch(`${BASE_URL}/recruiter/saved-candidates/${cid}`,
+  const response = await fetch(`${API_BASE_URL}/recruiter/saved-candidates/${cid}`,
     {
       method: "POST",
       headers: {
@@ -243,7 +243,7 @@ export async function setRecruiterJobStatus(jobId: string, status: "active" | "c
   const token = getToken();
   const jid = encodeURIComponent(jobId);
 
-  const response = await fetch(`${BASE_URL}/recruiter/job-postings/${jid}/status`, {
+  const response = await fetch(`${API_BASE_URL}/recruiter/job-postings/${jid}/status`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -269,7 +269,7 @@ export async function getCandidateResume(candidateId: string): Promise<any> {
   const token = getToken();
   const cid = encodeURIComponent(candidateId);
 
-  const response = await fetch(`${BASE_URL}/recruiter/candidate-resume/${cid}`,
+  const response = await fetch(`${API_BASE_URL}/recruiter/candidate-resume/${cid}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -294,7 +294,7 @@ export async function contactCandidate(candidateId: string): Promise<{ message: 
 {
   const token = getToken();
 
-  const response = await fetch(`${BASE_URL}/recruiter/contact-candidate`, {
+  const response = await fetch(`${API_BASE_URL}/recruiter/contact-candidate`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -320,7 +320,7 @@ export async function getCandidateResumePdf(candidateId: string): Promise<Blob> 
   const token = getToken();
   const cid = encodeURIComponent(candidateId);
 
-  const response = await fetch(`${BASE_URL}/candidate/resume-pdf/${cid}`,
+  const response = await fetch(`${API_BASE_URL}/candidate/resume-pdf/${cid}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
