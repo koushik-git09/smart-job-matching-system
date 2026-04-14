@@ -22,16 +22,14 @@ def get_resume_suggestions(resume_text: str, query: str) -> str:
     api_key = _require_api_key()
 
     try:
-        genai = importlib.import_module("google.generativeai")
+        genai = importlib.import_module("google.genai")
     except Exception as exc:
         raise RuntimeError(
-            "google-generativeai is not installed; install dependencies from backend/requirements.txt"
+            "google-genai is not installed; install dependencies from backend/requirements.txt"
         ) from exc
 
-    genai.configure(api_key=api_key)
-
     model_name = (os.getenv("GEMINI_MODEL") or _DEFAULT_MODEL).strip() or _DEFAULT_MODEL
-    model = genai.GenerativeModel(model_name)
+    client = genai.Client(api_key=api_key)
 
     resume_text = (resume_text or "").strip()
     query = (query or "").strip()
@@ -45,7 +43,7 @@ def get_resume_suggestions(resume_text: str, query: str) -> str:
         "Return: (1) Resume suggestions (2) Career advice (3) Next steps."
     )
 
-    result = model.generate_content(prompt)
+    result = client.models.generate_content(model=model_name, contents=prompt)
     text = getattr(result, "text", None)
     if isinstance(text, str) and text.strip():
         return text.strip()
