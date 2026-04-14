@@ -29,7 +29,7 @@ app.include_router(chatbot.router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*   "],
+    allow_origins=["https://smart-job-matching-system.vercel.app"],
     allow_origin_regex=os.getenv("CORS_ALLOW_ORIGIN_REGEX") or None,
     allow_credentials=True,
     allow_methods=["*"],
