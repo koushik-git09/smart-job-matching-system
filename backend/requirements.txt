@@ -9,7 +9,7 @@ python-dotenv
 email-validator
 pdfplumber
 reportlab
-
+google-generativeai
 scikit-learn
 numpy==1.26.4
 

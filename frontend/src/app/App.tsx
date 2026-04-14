@@ -7,6 +7,7 @@ import { LoginForm } from "@/app/components/auth/LoginForm";
 import { SignupForm } from "@/app/components/auth/SignupForm";
 import { AuthLayout } from "@/app/components/auth/AuthLayout";
 import { getToken, logoutUser } from "@/services/auth";
+import FloatingChatbot from "@/app/components/FloatingChatbot";
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
   const token = getToken();
@@ -98,5 +99,10 @@ function AppRoutes() {
 }
 
 export default function App() {
-  return <AppRoutes />;
+  return (
+    <>
+      <AppRoutes />
+      <FloatingChatbot />
+    </>
+  );
 }

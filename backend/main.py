@@ -10,6 +10,7 @@ from routes import jobs
 from routes import match
 from routes import learning
 from routes import recruiter
+from routes import chatbot
 
 
 # Load backend/.env for local development (Render/Vercel should use platform env vars).
@@ -23,6 +24,7 @@ app.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 app.include_router(match.router, prefix="/match", tags=["Matching"])
 app.include_router(learning.router, prefix="/learning", tags=["Learning"])
 app.include_router(recruiter.router, prefix="/recruiter", tags=["Recruiter"])
+app.include_router(chatbot.router)
 
 
 app.add_middleware(
