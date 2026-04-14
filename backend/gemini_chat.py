@@ -4,7 +4,7 @@ from typing import Final
 
 
 # ✅ FIXED MODEL NAME
-_DEFAULT_MODEL: Final[str] = "gemini-1.5-pro"
+_DEFAULT_MODEL: Final[str] = "gemini-2.0-flash"
 
 
 def _require_api_key() -> str:
