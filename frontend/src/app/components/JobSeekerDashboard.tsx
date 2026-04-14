@@ -138,8 +138,16 @@ export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
             <div>
               <h1 className="text-2xl font-bold">Career Readiness Dashboard</h1>
               <p className="text-sm text-gray-600">
-                Welcome back{userName ? `, ${userName}` : ""}! Track your
-                progress and find your next opportunity.
+                Welcome back
+                {userName ? (
+                  <>
+                    {", "}
+                    <span className="font-semibold text-gray-900">
+                      {userName}
+                    </span>
+                  </>
+                ) : null}
+                ! Track your progress and find your next opportunity.
               </p>
             </div>
             <Button variant="outline" onClick={onLogout}>
@@ -225,6 +233,24 @@ export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <p className="font-semibold">Upload your resume</p>
+                    <p className="text-sm text-gray-600">
+                      Upload your resume to analyze your skills, discover
+                      matching jobs, and get recommended courses.
+                    </p>
+                  </div>
+                  <Button onClick={() => setShowResumeUpload(true)}>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Resume
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="grid md:grid-cols-2 gap-6">
               {/* Skill Radar Chart */}
               <Card>
@@ -327,12 +353,8 @@ export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
 
           {/* Job Matches Tab */}
           <TabsContent value="jobs" className="space-y-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center mb-4">
               <h2 className="text-2xl font-bold">Job Recommendations</h2>
-              <Button onClick={() => setShowResumeUpload(true)}>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Resume
-              </Button>
             </div>
 
             {/* Firestore-backed recommendations with external apply links */}
@@ -340,8 +362,8 @@ export function JobSeekerDashboard({ onLogout }: JobSeekerDashboardProps) {
               {recommendedJobs.length === 0 ? (
                 <Card>
                   <CardContent className="p-6 text-sm text-gray-600">
-                    No recommended jobs yet. Upload your resume and make sure
-                    the Firestore `jobs` collection has job postings.
+                    No recommended jobs yet. Upload your resume to see the job
+                    recommendations tailored for you!
                   </CardContent>
                 </Card>
               ) : (
