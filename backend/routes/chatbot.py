@@ -24,13 +24,18 @@ class ChatbotResponse(BaseModel):
 def chatbot(req: ChatbotRequest):
     try:
         response_text = get_resume_suggestions(req.resume_text, req.query)
+
         return {"response": response_text}
+
     except RuntimeError as exc:
-        # e.g. missing GEMINI_API_KEY
         logger.exception("Chatbot runtime error")
         raise HTTPException(status_code=500, detail=str(exc))
+
     except Exception as exc:
         logger.exception("Chatbot service error")
+
+        # 🔥 Show real error in debug mode
         if (os.getenv("CHATBOT_DEBUG_ERRORS") or "").strip() == "1":
-            raise HTTPException(status_code=502, detail=f"Chatbot service error: {exc}")
+            raise HTTPException(status_code=502, detail=f"Chatbot error: {exc}")
+
         raise HTTPException(status_code=502, detail="Chatbot service error")

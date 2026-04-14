@@ -3,7 +3,8 @@ import importlib
 from typing import Final
 
 
-_DEFAULT_MODEL: Final[str] = "gemini-1.5-flash"
+# ✅ FIXED MODEL NAME
+_DEFAULT_MODEL: Final[str] = "gemini-1.5-flash-latest"
 
 
 def _require_api_key() -> str:
@@ -14,10 +15,7 @@ def _require_api_key() -> str:
 
 
 def get_resume_suggestions(resume_text: str, query: str) -> str:
-    """Return Gemini-generated resume suggestions and career advice.
-
-    Reads GEMINI_API_KEY from environment. Raises RuntimeError if missing.
-    """
+    """Return Gemini-generated resume suggestions and career advice."""
 
     api_key = _require_api_key()
 
@@ -38,13 +36,24 @@ def get_resume_suggestions(resume_text: str, query: str) -> str:
         "You are a career coach and resume reviewer. "
         "Given the candidate context and the user's question, provide actionable, concise advice. "
         "Prefer bullet points and concrete examples.\n\n"
-        f"CANDIDATE CONTEXT (may be partial):\n{resume_text}\n\n"
+        f"CANDIDATE CONTEXT:\n{resume_text}\n\n"
         f"USER QUESTION:\n{query}\n\n"
         "Return: (1) Resume suggestions (2) Career advice (3) Next steps."
     )
 
-    result = client.models.generate_content(model=model_name, contents=prompt)
-    text = getattr(result, "text", None)
-    if isinstance(text, str) and text.strip():
-        return text.strip()
-    return str(result)
+    try:
+        result = client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
+
+        text = getattr(result, "text", None)
+
+        if isinstance(text, str) and text.strip():
+            return text.strip()
+
+        return "No response from AI"
+
+    except Exception as e:
+        print("🔥 Gemini Error:", e)
+        return f"Chatbot failed: {str(e)}"
